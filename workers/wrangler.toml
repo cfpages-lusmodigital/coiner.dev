@@ -1,6 +1,6 @@
 name = "solana-token-creator-api"
 type = "javascript"
-account_id = "your-account-id"
+account_id = "d427cccf1b3d465fd41dbc64650080dc"
 workers_dev = true
 compatibility_date = "2023-01-01"
 
