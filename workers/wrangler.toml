@@ -1,4 +1,4 @@
-name = "solana-token-creator-api"
+name = "coiner-dev"
 type = "javascript"
 account_id = "d427cccf1b3d465fd41dbc64650080dc"
 workers_dev = true

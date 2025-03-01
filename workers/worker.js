@@ -1,4 +1,28 @@
 // worker.js
+import {
+  Keypair,
+  SystemProgram,
+  Transaction,
+  clusterApiUrl,
+  Connection,
+  PublicKey,
+} from '@solana/web3.js';
+import {
+  createInitializeMintInstruction,
+  getMinimumBalanceForRentExemptMint,
+  MINT_SIZE,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  mintTo,
+  setAuthority,
+  AuthorityType,
+  ASSOCIATED_TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
+import {
+  createCreateMetadataAccountV3Instruction,
+} from '@metaplex-foundation/mpl-token-metadata';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,HEAD,POST,OPTIONS',
@@ -11,7 +35,7 @@ async function handleOptions(request) {
   });
 }
 
-async function uploadToIPFS(imageBuffer, metadata) {
+async function uploadToIPFS(imageBuffer, metadata, env) {
   // Use Pinata API to upload image and metadata
   const pinataApiKey = env.PINATA_API_KEY; // Access via environment variable
   const pinataSecretApiKey = env.PINATA_SECRET_API_KEY; // Access via environment variable
@@ -79,7 +103,7 @@ async function uploadToIPFS(imageBuffer, metadata) {
   }
 }
 
-async function createToken(request) {
+async function createToken(request, env) {
   try {
     const formData = await request.formData();
     const name = formData.get('name');
@@ -120,17 +144,137 @@ async function createToken(request) {
     // Convert image to buffer
     const imageBuffer = await image.arrayBuffer();
     
-    // Upload to IPFS (placeholder)
-    const ipfsResult = await uploadToIPFS(imageBuffer, metadata);
+    // Upload to IPFS
+    const ipfsResult = await uploadToIPFS(imageBuffer, metadata, env);
+
+    if (!ipfsResult.success) {
+      throw new Error(`IPFS upload failed: ${ipfsResult.error}`);
+    }
     
-    // In a real implementation, you would:
-    // 1. Create a transaction to mint the token on Solana
-    // 2. Return the transaction for the user to sign with their wallet
-    // Here we'll just simulate a successful response
-    
+    // Solana token creation logic
+    const network = 'devnet'; // You might want to get this from the request
+    const connection = new Connection(clusterApiUrl(network), 'confirmed');
+
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+
+    // TODO: Get fee payer from the request or use a default
+    const feePayer = Keypair.generate().publicKey;
+
+    const lamportsForMint = await getMinimumBalanceForRentExemptMint(connection);
+
+    const createMintAccountIx = SystemProgram.createAccount({
+      newAccountPubkey: mint,
+      lamports: lamportsForMint,
+      space: MINT_SIZE,
+      programId: TOKEN_PROGRAM_ID,
+      fromPubkey: feePayer,
+    });
+
+    const initMintIx = createInitializeMintInstruction(
+      mint,
+      parseInt(decimals),
+      feePayer,
+      feePayer,
+      TOKEN_PROGRAM_ID
+    );
+
+    const mintAta = await getAssociatedTokenAddress(mint, feePayer);
+
+    const createMintAtaIx = createAssociatedTokenAccountInstruction(
+      feePayer,
+      mintAta,
+      feePayer,
+      mint,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const mintToIx = mintTo(
+      connection,
+      feePayer,
+      mint,
+      mintAta,
+      feePayer,
+      parseInt(supply) * (10 ** parseInt(decimals)),
+      [],
+      TOKEN_PROGRAM_ID
+    );
+
+    // Metadata logic
+    const metadataPDA = findMetadataPda(mint);
+
+    const createMetadataIx = createCreateMetadataAccountV3Instruction({
+      metadata: metadataPDA,
+      mint: mint,
+      mintAuthority: feePayer,
+      payer: feePayer,
+      updateAuthority: feePayer,
+    }, {
+      createArgsV3: {
+        data: {
+          name: name,
+          symbol: symbol,
+          uri: ipfsResult.metadataUri,
+          sellerFeeBasisPoints: 0,
+          creators: null,
+        },
+        isMutable: true,
+        collectionDetails: null
+      }
+    });
+
+    let freezeAuthority = null;
+    if (freezeAuthorities.freeze || freezeAuthorities.thaw || freezeAuthorities.update) {
+      freezeAuthority = Keypair.generate().publicKey;
+
+      const setFreezeAuthorityIx = setAuthority(
+        mint,
+        feePayer,
+        freezeAuthority,
+        AuthorityType.FreezeAccount,
+        feePayer,
+        []
+      );
+    }
+
+    const blockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer,
+    }).add(
+      createMintAccountIx,
+      initMintIx,
+      createMintAtaIx,
+      mintToIx,
+      createMetadataIx
+    );
+
+    if (freezeAuthority) {
+      const setFreezeAuthorityIx = setAuthority(
+        mint,
+        feePayer,
+        freezeAuthority,
+        AuthorityType.FreezeAccount,
+        feePayer,
+        []
+      );
+      tx.add(setFreezeAuthorityIx);
+    }
+
+    tx.sign(mintKeypair);
+
+    // TODO: Get signature from the user's wallet
+    // const signedTransaction = await signTransaction(tx);
+    const txid = await connection.sendTransaction(tx, [mintKeypair]);
+
+    await connection.confirmTransaction(txid);
+
+    console.log('Transaction ID:', txid);
+
     return new Response(JSON.stringify({
       success: true,
-      tokenAddress: '9xDUcWM8TSVKLqQH5aVt3NVfZs1YoEtgS6VJaKVujqNi',
+      tokenAddress: mint.toBase58(),
       metadata: {
         ...metadata,
         image: ipfsResult.imageUri,
@@ -159,7 +303,7 @@ async function createToken(request) {
   }
 }
 
-async function handleRequest(request) {
+async function handleRequest(request, env) {
   if (request.method === 'OPTIONS') {
     return handleOptions(request);
   }
@@ -167,12 +311,25 @@ async function handleRequest(request) {
   const url = new URL(request.url);
   
   if (url.pathname === '/api/token/create' && request.method === 'POST') {
-    return createToken(request);
+    return createToken(request, env);
   }
   
   return new Response('Not Found', { status: 404, headers: corsHeaders });
 }
 
 addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
+  event.respondWith(handleRequest(event.request, event));
 });
+
+// Helper function to find Metadata PDA
+const findMetadataPda = (mint) => {
+  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdqcvzi28cj1uypaqc6ucpywnyp3gc");
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      METADATA_PROGRAM_ID.toBuffer(),
+      new PublicKey(mint).toBuffer(),
+    ],
+    METADATA_PROGRAM_ID
+  )[0];
+};
