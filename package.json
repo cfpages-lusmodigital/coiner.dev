@@ -22,7 +22,8 @@
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
-    "vite": "^4.4.5"
+    "vite": "^4.4.5",
+    "wrangler": "^3.111.0"
   },
   "description": "",
   "main": "vite.config.js",
