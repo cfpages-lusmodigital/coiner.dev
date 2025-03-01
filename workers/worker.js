@@ -12,15 +12,71 @@ async function handleOptions(request) {
 }
 
 async function uploadToIPFS(imageBuffer, metadata) {
-  // This is a placeholder for actual IPFS upload logic
-  // In a real implementation, you would use a service like Pinata, Infura, or NFT.Storage
-  
-  // Simulated IPFS response for demo
-  return {
-    success: true,
-    imageUri: 'https://ipfs.io/ipfs/QmYtApksAmXPXEpqfPbyGgGQKMeA5yPHsaLy9GZK5AHVPQ',
-    metadataUri: 'https://ipfs.io/ipfs/QmZcH4YvBVVRJtdn4RdbaqgspFU8gH6P9vomDpNVgpq8Hk'
-  };
+  // Use Pinata API to upload image and metadata
+  const pinataApiKey = env.PINATA_API_KEY; // Access via environment variable
+  const pinataSecretApiKey = env.PINATA_SECRET_API_KEY; // Access via environment variable
+
+  if (!pinataApiKey || !pinataSecretApiKey) {
+    throw new Error('Pinata API key and secret must be set as environment variables.');
+  }
+
+  try {
+    // Upload image
+    const formDataImage = new FormData();
+    formDataImage.append('file', new Blob([imageBuffer]), 'image');
+
+    const imageResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pinataApiKey}`,
+      },
+      body: formDataImage,
+    });
+
+    if (!imageResponse.ok) {
+      const errorData = await imageResponse.json();
+      console.error('IPFS image upload failed:', errorData);
+      throw new Error(`IPFS image upload failed: ${errorData.error}`);
+    }
+
+    const imageData = await imageResponse.json();
+    const imageUri = `https://ipfs.io/ipfs/${imageData.IpfsHash}`;
+
+    // Upload metadata
+    const metadataWithImage = { ...metadata, image: imageUri };
+    const formDataMetadata = new FormData();
+    formDataMetadata.append('file', new Blob([JSON.stringify(metadataWithImage)], { type: 'application/json' }), 'metadata.json');
+
+    const metadataResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pinataApiKey}`,
+      },
+      body: formDataMetadata,
+    });
+
+    if (!metadataResponse.ok) {
+      const errorData = await metadataResponse.json();
+      console.error('IPFS metadata upload failed:', errorData);
+      throw new Error(`IPFS metadata upload failed: ${errorData.error}`);
+    }
+
+    const metadataData = await metadataResponse.json();
+    const metadataUri = `https://ipfs.io/ipfs/${metadataData.IpfsHash}`;
+
+    return {
+      success: true,
+      imageUri: imageUri,
+      metadataUri: metadataUri
+    };
+
+  } catch (error) {
+    console.error('IPFS upload error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 async function createToken(request) {
