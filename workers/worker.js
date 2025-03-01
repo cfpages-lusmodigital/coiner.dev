@@ -158,8 +158,19 @@ async function createToken(request, env) {
     const mintKeypair = Keypair.generate();
     const mint = mintKeypair.publicKey;
 
-    // TODO: Get fee payer from the request or use a default
-    const feePayer = Keypair.generate().publicKey;
+    // Get payer private key from environment variable
+    const payerPrivateKey = env.PAYER_PRIVATE_KEY;
+    if (!payerPrivateKey) {
+      throw new Error('Payer private key must be set in environment variables');
+    }
+
+    // Convert private key string to Uint8Array
+    const payerKeypair = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(payerPrivateKey))
+    );
+
+    // Use payerKeypair instead of generating new one
+    const feePayer = payerKeypair.publicKey;
 
     const lamportsForMint = await getMinimumBalanceForRentExemptMint(connection);
 
@@ -262,11 +273,9 @@ async function createToken(request, env) {
       tx.add(setFreezeAuthorityIx);
     }
 
-    tx.sign(mintKeypair);
+    tx.sign(mintKeypair, payerKeypair);
 
-    // TODO: Get signature from the user's wallet
-    // const signedTransaction = await signTransaction(tx);
-    const txid = await connection.sendTransaction(tx, [mintKeypair]);
+    const txid = await connection.sendTransaction(tx, [mintKeypair, payerKeypair]);
 
     await connection.confirmTransaction(txid);
 

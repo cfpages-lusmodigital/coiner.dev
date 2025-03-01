@@ -9,3 +9,7 @@ main = "worker.js"
 command = ""
 [build.upload]
 format = "service-worker"
+
+routes = [
+  { pattern = "coiner-dev.lusmodigital.workers.dev/api/token/create", zone_id = "efc9e1c0b00886e5f66cc6f23a076014" }
+]
