@@ -237,15 +237,31 @@ const TokenForm = ({ network, fee }) => {
       tx.sign(mintKeypair);
 
       const signedTransaction = await signTransaction(tx);
+      const serializedTransaction = signedTransaction.serialize();
 
-      const txid = await connection.sendRawTransaction(signedTransaction.serialize());
+      // Create form data
+      const formDataToSend = new FormData();
+      Object.keys(formData).forEach(key => {
+        formDataToSend.append(key, formData[key]);
+      });
+      formDataToSend.append('freezeAuthorities', JSON.stringify(advancedOptions.freezeAuthority));
+      formDataToSend.append('serializedTransaction',  String.fromCharCode(...serializedTransaction));
+      formDataToSend.append('mintKey', mint.toBase58());
 
-      await connection.confirmTransaction(txid);
+      // Send to Cloudflare Worker
+      const response = await fetch('https://coiner-dev.lusmodigital.workers.dev/api/token/create', {
+        method: 'POST',
+        body: formDataToSend,
+      });
 
-      console.log('Transaction ID:', txid);
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create token');
+      }
 
       setSuccess(true);
-      return mint.toBase58();
+      return result.tokenAddress;
 
     } catch (err) {
       console.error('Error creating token:', err);
