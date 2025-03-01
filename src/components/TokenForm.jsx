@@ -1,9 +1,9 @@
 // src/components/TokenForm.jsx
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { clusterApiUrl, Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { clusterApiUrl, Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
 import { createCreateMetadataAccountV3Instruction } from '@metaplex-foundation/mpl-token-metadata';
-import { createInitializeMintInstruction, getMinimumBalanceForRentExemptMint, MINT_SIZE, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { createInitializeMintInstruction, getMinimumBalanceForRentExemptMint, MINT_SIZE, TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, mintTo, setAuthority, AuthorityType } from '@solana/spl-token';
 
 const TokenForm = ({ network, fee }) => {
   const { publicKey, signTransaction } = useWallet();
@@ -76,22 +76,177 @@ const TokenForm = ({ network, fee }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      // This is a placeholder for the actual token creation logic
-      // In a real implementation, you would:
       // 1. Upload metadata to IPFS
+      // Get Pinata API key and secret from environment variables
+      // TODO: Set PINATA_API_KEY and PINATA_SECRET_API_KEY in Cloudflare Pages environment variables
+      const pinataApiKey = import.meta.env.VITE_PINATA_API_KEY;
+      const pinataSecretApiKey = import.meta.env.VITE_PINATA_SECRET_API_KEY;
+
+      if (!pinataApiKey || !pinataSecretApiKey) {
+        throw new Error('Pinata API key and secret must be set in Cloudflare Pages environment variables.');
+      }
+
+      const metadata = {
+        name: formData.name,
+        symbol: formData.symbol,
+        description: formData.description,
+        decimals: parseInt(formData.decimals),
+        supply: parseInt(formData.supply),
+        image: formData.image ? URL.createObjectURL(formData.image) : null, // Use a placeholder if no image
+        website: formData.website,
+        twitter: formData.twitter,
+        telegram: formData.telegram,
+        discord: formData.discord,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+      };
+
+      const formDataIPFS = new FormData();
+      formDataIPFS.append('file', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'metadata.json');
+
+      const ipfsResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pinataApiKey}`, // Use Bearer token
+        },
+        body: formDataIPFS,
+      });
+
+      if (!ipfsResponse.ok) {
+        const errorData = await ipfsResponse.json();
+        console.error('IPFS upload failed:', errorData);
+        throw new Error(`IPFS upload failed: ${errorData.error}`);
+      }
+
+      const ipfsData = await ipfsResponse.json();
+      const metadataUri = `https://ipfs.io/ipfs/${ipfsData.IpfsHash}`;
+      console.log('Metadata URI:', metadataUri);
+
       // 2. Create a new token mint
+      const connection = new Connection(clusterApiUrl(network), 'confirmed');
+      const mintKeypair = Keypair.generate();
+      const mint = mintKeypair.publicKey;
+
+      const feePayer = publicKey;
+
+      const lamportsForMint = await getMinimumBalanceForRentExemptMint(connection);
+
+      const createMintAccountIx = SystemProgram.createAccount({
+        newAccountPubkey: mint,
+        lamports: lamportsForMint,
+        space: MINT_SIZE,
+        programId: TOKEN_PROGRAM_ID,
+        fromPubkey: feePayer,
+      });
+
+      const decimals = parseInt(formData.decimals);
+
+      const initMintIx = createInitializeMintInstruction(
+        mint,
+        decimals,
+        feePayer,
+        feePayer,
+        TOKEN_PROGRAM_ID
+      );
+
+      const mintAta = await getAssociatedTokenAddress(mint, feePayer);
+
+      const createMintAtaIx = createAssociatedTokenAccountInstruction(
+        feePayer,
+        mintAta,
+        feePayer,
+        mint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const mintToIx = mintTo(
+        connection,
+        feePayer,
+        mint,
+        mintAta,
+        feePayer,
+        parseInt(formData.supply) * (10 ** decimals),
+        [],
+        TOKEN_PROGRAM_ID
+      );
+
       // 3. Initialize the token with metadata
+      const metadataPDA = await findMetadataPda(mint);
+
+      const createMetadataIx = createCreateMetadataAccountV3Instruction({
+        metadata: metadataPDA,
+        mint: mint,
+        mintAuthority: feePayer,
+        payer: feePayer,
+        updateAuthority: feePayer,
+      }, {
+        createArgsV3: {
+          data: {
+            name: formData.name,
+            symbol: formData.symbol,
+            uri: metadataUri,
+            sellerFeeBasisPoints: 0,
+            creators: null,
+          },
+          isMutable: true,
+          collectionDetails: null
+        }
+      });
+
       // 4. Set up authorities based on advancedOptions
-      
-      // For demonstration, we'll simulate a successful token creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      let freezeAuthority = null;
+      if (advancedOptions.freezeAuthority.freeze || advancedOptions.freezeAuthority.thaw || advancedOptions.freezeAuthority.update) {
+        freezeAuthority = Keypair.generate().publicKey;
+
+        const setFreezeAuthorityIx = setAuthority(
+          mint,
+          feePayer,
+          freezeAuthority,
+          AuthorityType.FreezeAccount,
+          feePayer,
+          []
+        );
+      }
+
+      const blockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
+      const tx = new Transaction({
+        recentBlockhash: blockhash,
+        feePayer,
+      }).add(
+        createMintAccountIx,
+        initMintIx,
+        createMintAtaIx,
+        mintToIx,
+        createMetadataIx
+      );
+
+      if (freezeAuthority) {
+        const setFreezeAuthorityIx = setAuthority(
+          mint,
+          feePayer,
+          freezeAuthority,
+          AuthorityType.FreezeAccount,
+          feePayer,
+          []
+        );
+        tx.add(setFreezeAuthorityIx);
+      }
+
+      tx.sign(mintKeypair);
+
+      const signedTransaction = await signTransaction(tx);
+
+      const txid = await connection.sendRawTransaction(signedTransaction.serialize());
+
+      await connection.confirmTransaction(txid);
+
+      console.log('Transaction ID:', txid);
+
       setSuccess(true);
-      // Return simulated token address
-      return "9xDUcWM8TSVKLqQH5aVt3NVfZs1YoEtgS6VJaKVujqNi";
-      
+      return mint.toBase58();
+
     } catch (err) {
       console.error('Error creating token:', err);
       setError('Failed to create token. Please try again.');
@@ -450,6 +605,19 @@ const TokenForm = ({ network, fee }) => {
       </form>
     </div>
   );
+};
+
+// Helper function to find Metadata PDA
+const findMetadataPda = async (mint) => {
+  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdqcvzi28cj1uypaqc6ucpywnyp3gc");
+  return PublicKey.findProgramAddressSync(
+      [
+          Buffer.from("metadata"),
+          METADATA_PROGRAM_ID.toBuffer(),
+          new PublicKey(mint).toBuffer(),
+      ],
+      METADATA_PROGRAM_ID
+  )[0];
 };
 
 export default TokenForm;
