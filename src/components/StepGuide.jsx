@@ -1,65 +1,75 @@
-// src/components/StepGuide.jsx
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+const steps = [
+  {
+    title: "1. Connect Your Wallet",
+    description: "Click the 'Connect Wallet' button at the top of the page to connect your Phantom wallet. You'll need some SOL in your wallet to pay for the creation fees.",
+  },
+  {
+    title: "2. Fill in Your Token's Details",
+    description: "Choose a memorable and unique name, symbol, and description for your token. This information will be stored on the blockchain and will be visible to everyone.",
+  },
+  {
+    title: "3. Set the Decimals and Supply",
+    description: "Solana tokens typically use 9 decimal places. The supply is the total number of tokens that will ever be created.",
+  },
+  {
+    title: "4. Upload a Token Image",
+    description: "Add a visual representation for your token. This image will be shown in wallets and on exchanges. We recommend a square image in PNG, JPG, or GIF format.",
+  },
+  {
+    title: "5. Add Social Links & Tags",
+    description: "Provide links to your website, Twitter, Telegram, etc. to help build your community and provide more information about your project.",
+  },
+  {
+    title: "6. Configure Advanced Options (Optional)",
+    description: "For advanced users, we offer options to customize features like minting authority or freeze authority. If you're not sure what these mean, you can safely ignore them.",
+  },
+  {
+    title: "7. Create Your Token",
+    description: "Review all the details, then click 'Create Token'. You'll be asked to approve the transaction in your wallet. Once confirmed, your token will be created and sent to your wallet.",
+  },
+];
 
 const StepGuide = () => {
   return (
-    <div className="step-guide-container">
-      <h2>How to use Solana Token Creator</h2>
-      
-      <ol className="steps-list">
-        <li>
-          <h3>Connect your Solana wallet</h3>
-          <p>Click the "Connect Wallet" button to connect your Phantom wallet</p>
-        </li>
-        
-        <li>
-          <h3>Write the name you want for your Token</h3>
-          <p>Choose a memorable and unique name for your token</p>
-        </li>
-        
-        <li>
-          <h3>Indicate the symbol (max 6 characters)</h3>
-          <p>Create a short symbol that represents your token (e.g. BTC, ETH, SOL)</p>
-        </li>
-        
-        <li>
-          <h3>Set the decimals for your Solana Token, 9 for utility tokens</h3>
-          <p>Solana tokens typically use 9 decimals</p>
-        </li>
-        
-        <li>
-          <h3>Write the description you want for your Token</h3>
-          <p>Explain the purpose and utility of your token</p>
-        </li>
-        
-        <li>
-          <h3>Upload the image for your token (PNG)</h3>
-          <p>Add a visual representation of your token</p>
-        </li>
-        
-        <li>
-          <h3>Pick the supply of your Token</h3>
-          <p>Determine how many tokens will be created in total</p>
-        </li>
-        
-        <li>
-          <h3>Click on create, accept the transaction and wait until your token is ready</h3>
-          <p>Confirm the transaction in your wallet and your token will be created</p>
-        </li>
-      </ol>
-      
-      <div className="fee-explanation">
-        <h3>The cost of creating the Token is 0.5 SOL, it includes:</h3>
-        <ul>
-          <li>All fees required for the SPL Token Creation.</li>
-          <li>The contract process will mint and will take some time. We encourage you to wait until you see the final message of the token in the wallet you chose.</li>
-        </ul>
-        <p>
-          Check here's what's truly important 
-          <a href="#"> how to create a Solana Token</a>.
-        </p>
-      </div>
-    </div>
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-center text-2xl">How to Create Your Solana Token in 7 Easy Steps</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="relative">
+          <div className="absolute left-1/2 h-full border-l-2 border-dashed border-gray-700 -translate-x-1/2 hidden md:block"></div>
+          <div className="space-y-12">
+            {steps.map((step, index) => (
+              <div key={index} className="relative flex items-center md:items-start">
+                <div className={cn("flex items-center w-full", index % 2 === 1 && "md:flex-row-reverse")}>
+                  <div className="flex-1 px-4 md:px-8">
+                    <div className={cn("p-6 rounded-lg bg-gray-800", index % 2 === 1 ? "md:text-right" : "md:text-left")}>
+                      <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+                      <p className="text-sm text-gray-400">{step.description}</p>
+                    </div>
+                  </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 bg-gray-900 z-10 hidden md:flex">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-lg">
+                      {index + 1}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-12 text-center p-6 bg-gray-800 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Creation Fee: 0.5 SOL (Mainnet) / 0.1 SOL (Devnet)</h3>
+          <p className="text-sm text-gray-400">
+            This fee covers all blockchain costs for creating your SPL Token. The process is automated and secure.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
