@@ -80,3 +80,7 @@ It is critical that the Cloudflare Pages build environment is configured correct
 ### Local Development Environment
 
 To ensure consistency between local development and the production/preview environments, the `.nvmrc` file is set to `20`. Developers using `nvm` will automatically switch to the correct Node.js version when entering the project directory.
+
+### UI Component State
+
+*   **Accordion Component**: The `Accordion` components located in `src/components/ui/accordion.jsx` are presentational only. They do not contain the state management logic typically found in a library like Radix UI. Any implementation of this accordion must include its own state management (e.g., using the `useState` hook in the parent component) to control which items are open or closed.

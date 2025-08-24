@@ -43,34 +43,18 @@ const FAQ = () => {
           <CardTitle className="text-center text-2xl">Frequently Asked Questions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="w-full">
+          <Accordion>
             {faqItems.map((faq, index) => (
-              <div key={index} className="border-b">
-                <AccordionTrigger
-                  onClick={() => handleToggle(index)}
-                  className="flex justify-between items-center w-full py-4 text-lg font-semibold text-left"
-                >
+              <AccordionItem key={index}>
+                <AccordionTrigger onClick={() => handleToggle(index)} data-state={openItem === index ? 'open' : 'closed'}>
                   {faq.question}
-                  <svg
-                    className={`w-6 h-6 transition-transform transform ${openItem === index ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
                 </AccordionTrigger>
-                <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${openItem === index ? 'max-h-96' : 'max-h-0'}`}
-                >
-                  <div className="p-4 text-gray-400">
-                    {faq.answer}
-                  </div>
-                </div>
-              </div>
+                <AccordionContent data-state={openItem === index ? 'open' : 'closed'}>
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </CardContent>
       </Card>
 
