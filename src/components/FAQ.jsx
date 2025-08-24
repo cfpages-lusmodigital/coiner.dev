@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -30,6 +30,12 @@ const faqItems = [
 ];
 
 const FAQ = () => {
+  const [openItem, setOpenItem] = useState(null);
+
+  const handleToggle = (index) => {
+    setOpenItem(openItem === index ? null : index);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
       <Card>
@@ -37,11 +43,13 @@ const FAQ = () => {
           <CardTitle className="text-center text-2xl">Frequently Asked Questions</CardTitle>
         </CardHeader>
         <CardContent>
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion>
             {faqItems.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger>{faq.question}</AccordionTrigger>
-                <AccordionContent>
+              <AccordionItem key={index}>
+                <AccordionTrigger onClick={() => handleToggle(index)} data-state={openItem === index ? 'open' : 'closed'}>
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent data-state={openItem === index ? 'open' : 'closed'}>
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
