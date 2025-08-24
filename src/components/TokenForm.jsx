@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { clusterApiUrl, Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
-import { createCreateMetadataAccountV3Instruction } from '@metaplex-foundation/mpl-token-metadata';
+import { createCreateMetadataAccountV3Instruction, findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
 import { createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createMintToInstruction } from '@solana/spl-token';
 
 import { Button } from "@/components/ui/button";
@@ -515,19 +515,6 @@ const TokenForm = ({ network, fee }) => {
       </Card>
     </TooltipProvider>
   );
-};
-
-// Helper function to find Metadata PDA
-const findMetadataPda = async (mint) => {
-  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdqcvzi28cj1uypaqc6ucpywnyp3gc");
-  return PublicKey.findProgramAddressSync(
-      [
-          Buffer.from("metadata"),
-          METADATA_PROGRAM_ID.toBuffer(),
-          new PublicKey(mint).toBuffer(),
-      ],
-      METADATA_PROGRAM_ID
-  )[0];
 };
 
 export default TokenForm;
