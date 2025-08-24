@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -30,6 +30,12 @@ const faqItems = [
 ];
 
 const FAQ = () => {
+  const [openItem, setOpenItem] = useState(null);
+
+  const handleToggle = (index) => {
+    setOpenItem(openItem === index ? null : index);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
       <Card>
@@ -37,16 +43,34 @@ const FAQ = () => {
           <CardTitle className="text-center text-2xl">Frequently Asked Questions</CardTitle>
         </CardHeader>
         <CardContent>
-          <Accordion type="single" collapsible className="w-full">
+          <div className="w-full">
             {faqItems.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger>{faq.question}</AccordionTrigger>
-                <AccordionContent>
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
+              <div key={index} className="border-b">
+                <AccordionTrigger
+                  onClick={() => handleToggle(index)}
+                  className="flex justify-between items-center w-full py-4 text-lg font-semibold text-left"
+                >
+                  {faq.question}
+                  <svg
+                    className={`w-6 h-6 transition-transform transform ${openItem === index ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </AccordionTrigger>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${openItem === index ? 'max-h-96' : 'max-h-0'}`}
+                >
+                  <div className="p-4 text-gray-400">
+                    {faq.answer}
+                  </div>
+                </div>
+              </div>
             ))}
-          </Accordion>
+          </div>
         </CardContent>
       </Card>
 

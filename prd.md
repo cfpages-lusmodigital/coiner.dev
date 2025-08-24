@@ -66,3 +66,17 @@ The application should have a modern, polished, and "glowing" aesthetic. It shou
 *   **Wallet Integration**: `@solana/wallet-adapter`
 *   **Backend/Worker**: Cloudflare Workers (for handling transactions and interacting with services like Pinata)
 *   **Hosting**: Cloudflare Pages
+
+## 6. Build & Deployment Notes
+
+### Cloudflare Pages Environment
+
+It is critical that the Cloudflare Pages build environment is configured correctly. The project relies on features available in newer versions of Node.js.
+
+*   **Node.js Version**: The build and deployment pipeline must use **Node.js version 20 or higher**.
+*   **Configuration**: In the Cloudflare Pages settings for the project, an environment variable named `NODE_VERSION` must be created and set to `20`.
+*   **Reasoning**: Failure to set the correct Node.js version will result in build failures. Specifically, the version of Vite used in this project (`vite@^6.0.0`) requires a `crypto.getRandomValues` function that is only available in modern Node.js versions. Older default environments (like Node 16) will cause the build to crash.
+
+### Local Development Environment
+
+To ensure consistency between local development and the production/preview environments, the `.nvmrc` file is set to `20`. Developers using `nvm` will automatically switch to the correct Node.js version when entering the project directory.
