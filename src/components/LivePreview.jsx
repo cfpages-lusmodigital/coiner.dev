@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Assuming you have an Avatar component or will create one. I'll use a placeholder for now.
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ImageIcon } from 'lucide-react';
 
 const LivePreview = ({ formData }) => {
@@ -12,17 +12,16 @@ const LivePreview = ({ formData }) => {
         <h3 className="text-lg font-semibold text-center">Live Preview</h3>
       </CardHeader>
       <CardContent className="flex flex-col items-center text-center space-y-4">
-        <div className="w-32 h-32 rounded-full bg-gray-800 flex items-center justify-center">
-            {image ? (
-                <img src={image} alt="Token Preview" className="w-full h-full object-cover rounded-full" />
-            ) : (
-                <ImageIcon className="w-16 h-16 text-gray-500" />
-            )}
-        </div>
+        <Avatar className="w-32 h-32">
+          <AvatarImage src={image} alt={name || "Token Preview"} />
+          <AvatarFallback className="bg-gray-800">
+            <ImageIcon className="w-16 h-16 text-gray-500" />
+          </AvatarFallback>
+        </Avatar>
 
         <div>
           <h2 className="text-2xl font-bold">{name || "Coin Name"}</h2>
-          <p className="text-lg text-gray-400">{ticker ? `$${ticker}` : "$TICKER"}</p>
+          <p className="text-lg text-gray-400">{ticker ? `$${ticker.toUpperCase()}` : "$TICKER"}</p>
         </div>
 
         <p className="text-sm text-gray-300 min-h-[60px]">
