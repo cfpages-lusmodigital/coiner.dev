@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wallet, Pencil, Settings, Upload, Link as LinkIcon, ShieldCheck, Rocket } from './ui/Icons';
+import { Wallet, Pencil, Settings, Upload, Link, ShieldCheck, Rocket } from './ui/Icons';
 
 const steps = [
   {
@@ -24,7 +24,7 @@ const steps = [
     description: "Add a visual representation for your token. This image will be shown in wallets and on exchanges. We recommend a square image in PNG, JPG, or GIF format.",
   },
   {
-    icon: <LinkIcon className="h-8 w-8 text-primary" />,
+    icon: <Link className="h-8 w-8 text-primary" />,
     title: "5. Add Social Links & Tags",
     description: "Provide links to your website, Twitter, Telegram, etc. to help build your community and provide more information about your project.",
   },
