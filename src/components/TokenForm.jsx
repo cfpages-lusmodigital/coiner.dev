@@ -3,7 +3,6 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { clusterApiUrl, Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
 import { createCreateMetadataAccountV3Instruction } from '@metaplex-foundation/mpl-token-metadata';
 import { createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createMintToInstruction } from '@solana/spl-token';
-import { getMinimumBalanceForRentExemptMint } from '@solana/spl-token/lib/utils';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
