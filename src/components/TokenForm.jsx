@@ -149,7 +149,7 @@ const TokenForm = ({ network, fee }) => {
 
       const feePayer = publicKey;
 
-      const lamportsForMint = await getMinimumBalanceForRentExemptMint(connection);
+      const lamportsForMint = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
 
       const createMintAccountIx = SystemProgram.createAccount({
         newAccountPubkey: mint,

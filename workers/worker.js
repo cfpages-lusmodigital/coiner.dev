@@ -172,7 +172,7 @@ async function createToken(request, env) {
     // Use payerKeypair instead of generating new one
     const feePayer = payerKeypair.publicKey;
 
-    const lamportsForMint = await getMinimumBalanceForRentExemptMint(connection);
+    const lamportsForMint = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
 
     const createMintAccountIx = SystemProgram.createAccount({
       newAccountPubkey: mint,
