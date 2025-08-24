@@ -1,94 +1,49 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
-import { useWallet, WalletProvider, ConnectionProvider } from '@solana/wallet-adapter-react';
+import { WalletProvider, ConnectionProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-import TokenForm from './components/TokenForm';
-import StepGuide from './components/StepGuide';
-import FAQ from './components/FAQ';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
-import { Button } from './components/ui/button';
+import CreatorPage from './components/CreatorPage';
+import { Rocket } from './components/ui/Icons';
 
 const App = () => {
-  const [network, setNetwork] = useState(WalletAdapterNetwork.Devnet);
+  // For this simplified app, we'll default to devnet.
+  // The PRD doesn't specify a network selector, so we'll remove it for a cleaner UI.
+  const network = WalletAdapterNetwork.Devnet;
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], [network]);
-
-  const fee = network === WalletAdapterNetwork.Mainnet ? 0.5 : 0.1;
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          <div className="min-h-screen bg-gray-900 text-white">
-            <header className="py-4 px-8 flex justify-between items-center border-b border-gray-800">
-              <div className="text-2xl font-bold">
-                Coiner<span className="text-primary">.dev</span>
+          <div className="min-h-screen bg-gray-900 text-white font-sans">
+            <header className="py-4 px-8 flex justify-between items-center border-b border-gray-800 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-50">
+              <div className="flex items-center gap-2">
+                  <Rocket className="h-6 w-6 text-primary" />
+                  <div className="text-2xl font-bold">
+                    Coiner<span className="text-primary">.fun</span>
+                  </div>
               </div>
-              <div className="flex items-center gap-4">
-                <Select value={network} onValueChange={setNetwork}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select network" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={WalletAdapterNetwork.Mainnet}>Mainnet</SelectItem>
-                    <SelectItem value={WalletAdapterNetwork.Devnet}>Devnet</SelectItem>
-                    <SelectItem value={WalletAdapterNetwork.Testnet}>Testnet</SelectItem>
-                  </SelectContent>
-                </Select>
-                <WalletMultiButton style={{ backgroundColor: '#00BCD4', color: 'white' }} />
-              </div>
+              <WalletMultiButton />
             </header>
 
-            <main className="container mx-auto py-12 px-4 space-y-12">
-              <div className="text-center">
-                <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-                  Create Your Own Solana SPL Token
-                </h1>
-                <p className="mt-4 text-lg text-gray-400">
-                  No code required. Launch your token in minutes.
-                </p>
-              </div>
-
-              <TokenCreator network={network} fee={fee} />
-              
-              <StepGuide />
-              
-              <FAQ />
+            <main>
+              <CreatorPage />
             </main>
 
-            <footer className="py-8 px-8 text-center text-gray-500 border-t border-gray-800">
-              <p>© {new Date().getFullYear()} Coiner.dev | All rights reserved.</p>
+            <footer className="py-8 px-8 text-center text-gray-500 border-t border-gray-800 mt-12">
+              <p>Disclaimer: This is a tool for creating high-risk cryptocurrencies. Most meme coins lose their value. Never invest more than you are willing to lose.</p>
+              <p className="mt-2">© {new Date().getFullYear()} Coiner.fun | All rights reserved.</p>
             </footer>
           </div>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
-};
-
-const TokenCreator = ({ network, fee }) => {
-  const { connected } = useWallet();
-  
-  if (!connected) {
-    return (
-      <Card className="w-full max-w-4xl mx-auto text-center">
-        <CardHeader>
-          <CardTitle>Connect Your Wallet</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">You need to connect a Solana wallet to start creating your token.</p>
-          <WalletMultiButton style={{ backgroundColor: '#00BCD4', color: 'white' }} />
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  return <TokenForm network={network} fee={fee} />;
 };
 
 export default App;
