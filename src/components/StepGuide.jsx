@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wallet, Pencil, Settings, Upload, Link as LinkIcon, ShieldCheck, Rocket } from 'lucide-react';
+import { Wallet, Pencil, Settings, Upload, Link as LinkIcon, ShieldCheck, Rocket } from './ui/Icons';
 
 const steps = [
   {
