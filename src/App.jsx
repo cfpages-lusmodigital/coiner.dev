@@ -7,7 +7,7 @@ import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 import CreatorPage from './components/CreatorPage';
-import { Icons } from './components/ui/Icons';
+import { Rocket } from './components/ui/Icons';
 
 const App = () => {
   // For this simplified app, we'll default to devnet.
@@ -23,7 +23,7 @@ const App = () => {
           <div className="min-h-screen bg-gray-900 text-white font-sans">
             <header className="py-4 px-8 flex justify-between items-center border-b border-gray-800 sticky top-0 bg-gray-900/80 backdrop-blur-sm z-50">
               <div className="flex items-center gap-2">
-                  <Icons.logo className="h-6 w-6 text-primary" />
+                  <Rocket className="h-6 w-6 text-primary" />
                   <div className="text-2xl font-bold">
                     Coiner<span className="text-primary">.fun</span>
                   </div>
