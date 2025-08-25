@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"; // I'll need to create this component as well.
-import { Icons } from './ui/Icons';
 import { CheckCircle2, Copy, Loader2, PartyPopper, Rocket, Twitter, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
