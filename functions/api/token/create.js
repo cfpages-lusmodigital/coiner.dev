@@ -103,7 +103,27 @@ async function uploadToIPFS(imageBuffer, metadata, env) {
   }
 }
 
-async function createToken(request, env) {
+// Helper function to find Metadata PDA
+const findMetadataPda = (mint) => {
+  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdqcvzi28cj1uypaqc6ucpywnyp3gc");
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      METADATA_PROGRAM_ID.toBuffer(),
+      new PublicKey(mint).toBuffer(),
+    ],
+    METADATA_PROGRAM_ID
+  )[0];
+};
+
+export async function onRequestOptions(context) {
+  return new Response(null, {
+    headers: corsHeaders
+  });
+}
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
   try {
     const formData = await request.formData();
     const name = formData.get('name');
@@ -330,15 +350,3 @@ addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request, event));
 });
 
-// Helper function to find Metadata PDA
-const findMetadataPda = (mint) => {
-  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdqcvzi28cj1uypaqc6ucpywnyp3gc");
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("metadata"),
-      METADATA_PROGRAM_ID.toBuffer(),
-      new PublicKey(mint).toBuffer(),
-    ],
-    METADATA_PROGRAM_ID
-  )[0];
-};
