@@ -1,519 +1,548 @@
-import React, { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { clusterApiUrl, Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
-import { createCreateMetadataAccountV3Instruction, findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
-import { createInitializeMintInstruction, MINT_SIZE, TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createMintToInstruction } from '@solana/spl-token';
+// src/components/TokenForm.jsx
+import React, { useState, useEffect } from 'react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Upload,
+  ShieldCheck,
+  Zap,
+  Info,
+  CheckCircle2,
+  Lock,
+  Globe,
+  Sparkles,
+  Coins,
+} from 'lucide-react';
+import { createSolanaToken, estimateRentCosts } from '@/lib/solana';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+const TokenForm = ({
+  formData,
+  setFormData,
+  onLaunchStart,
+  onLaunchProgress,
+  onLaunchSuccess,
+  onLaunchError,
+  network = 'devnet',
+}) => {
+  const { connection } = useConnection();
+  const wallet = useWallet();
+  const { connected, publicKey } = wallet;
 
-const TokenForm = ({ network, fee }) => {
-  const { publicKey, signTransaction } = useWallet();
-  const [formData, setFormData] = useState({
-    name: '',
-    symbol: '',
-    description: '',
-    supply: '1000000',
-    decimals: '9',
-    image: null,
-    website: '',
-    twitter: '',
-    telegram: '',
-    discord: '',
-    tags: '',
+  const [rentCosts, setRentCosts] = useState({
+    mintRentSol: '0.00107',
+    ataRentSol: '0.00149',
+    metadataRentSol: '0.00410',
+    estimatedTotalSol: '0.00676',
   });
 
-  const [advancedOptions, setAdvancedOptions] = useState({
-    modifyCreatorAllowed: false,
-    customAddress: false,
-    whitelistSupplyDistribution: false,
-    addMintAuthority: false,
-    freezeAuthority: {
-      freeze: false,
-      thaw: false,
-      update: false
-    }
+  const [prioritySpeed, setPrioritySpeed] = useState('fast'); // normal | fast | turbo
+  const [securityOptions, setSecurityOptions] = useState({
+    revokeFreeze: true,
+    revokeMint: true,
+    immutable: true,
   });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [tokenAddress, setTokenAddress] = useState('');
+  // Fetch live rent estimates from connected RPC
+  useEffect(() => {
+    let isMounted = true;
+    estimateRentCosts(connection).then((costs) => {
+      if (isMounted) setRentCosts(costs);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [connection]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    let finalValue = value;
+    if (name === 'symbol' || name === 'ticker') {
+      finalValue = value.toUpperCase();
+    }
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
   };
 
-  const handleSelectChange = (name, value) => {
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+  const handleImageFile = (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size exceeds 5MB limit.');
+      return;
+    }
+    setFormData((prev) => ({ ...prev, image: file }));
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        image: file
-      });
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageFile(e.dataTransfer.files[0]);
     }
   };
 
-  const handleAdvancedOptionsChange = (option, value) => {
-    setAdvancedOptions({
-      ...advancedOptions,
-      [option]: value
-    });
+  // Priority fee mapping in microLamports
+  const priorityFeeMap = {
+    normal: 50000,   // ~0.00001 SOL
+    fast: 250000,    // ~0.00005 SOL
+    turbo: 1000000,  // ~0.00020 SOL
   };
 
-  const handleFreezeAuthorityChange = (option, value) => {
-    setAdvancedOptions({
-      ...advancedOptions,
-      freezeAuthority: {
-        ...advancedOptions.freezeAuthority,
-        [option]: value
-      }
-    });
-  };
+  const isFormValid =
+    formData.name?.trim().length > 0 &&
+    (formData.symbol || formData.ticker)?.trim().length > 0 &&
+    Number(formData.supply || 0) > 0;
 
-  const createToken = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const handleCreateToken = async () => {
+    if (!connected || !publicKey) {
+      alert('Please connect your Solana wallet first.');
+      return;
+    }
+
+    if (!isFormValid) {
+      alert('Please fill in Token Name, Symbol, and Supply.');
+      return;
+    }
 
     try {
-      // 1. Upload metadata to IPFS
-      // TODO: Set PINATA_API_KEY and PINATA_SECRET_API_KEY in Cloudflare Pages environment variables
-      const pinataApiKey = import.meta.env.VITE_PINATA_API_KEY;
-      const pinataSecretApiKey = import.meta.env.VITE_PINATA_SECRET_API_KEY;
+      onLaunchStart();
 
-      if (!pinataApiKey || !pinataSecretApiKey) {
-        throw new Error('Pinata API key and secret must be set in Cloudflare Pages environment variables.');
+      // Step 1: Upload Metadata to Backend
+      onLaunchProgress('uploading', 'Pinning token logo and metadata to IPFS...');
+      const uploadData = new FormData();
+      uploadData.append('name', formData.name);
+      uploadData.append('symbol', (formData.symbol || formData.ticker).toUpperCase());
+      uploadData.append('description', formData.description || '');
+      uploadData.append('decimals', formData.decimals || '6');
+      uploadData.append('supply', formData.supply || '1000000000');
+      uploadData.append('website', formData.website || '');
+      uploadData.append('twitter', formData.twitter || '');
+      uploadData.append('telegram', formData.telegram || '');
+      uploadData.append('discord', formData.discord || '');
+
+      if (formData.image instanceof File) {
+        uploadData.append('image', formData.image);
       }
 
-      const metadata = {
-        name: formData.name,
-        symbol: formData.symbol,
-        description: formData.description,
-        decimals: parseInt(formData.decimals),
-        supply: parseInt(formData.supply),
-        image: formData.image ? URL.createObjectURL(formData.image) : null, // Use a placeholder if no image
-        website: formData.website,
-        twitter: formData.twitter,
-        telegram: formData.telegram,
-        discord: formData.discord,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
-      };
-
-      const formDataIPFS = new FormData();
-      formDataIPFS.append('file', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'metadata.json');
-
-      const ipfsResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      const metaRes = await fetch('/api/upload-metadata', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${pinataApiKey}`,
-        },
-        body: formDataIPFS,
+        body: uploadData,
       });
 
-      if (!ipfsResponse.ok) {
-        const errorData = await ipfsResponse.json();
-        console.error('IPFS upload failed:', errorData);
-        throw new Error(`IPFS upload failed: ${errorData.error}`);
+      if (!metaRes.ok) {
+        const errJson = await metaRes.json().catch(() => ({}));
+        throw new Error(errJson.error || `Metadata upload failed with status ${metaRes.status}`);
       }
 
-      const ipfsData = await ipfsResponse.json();
-      const metadataUri = `https://ipfs.io/ipfs/${ipfsData.IpfsHash}`;
-      console.log('Metadata URI:', metadataUri);
+      const metaJson = await metaRes.json();
+      if (!metaJson.success) {
+        throw new Error(metaJson.error || 'Metadata upload returned unsuccessful response');
+      }
 
-      // 2. Create a new token mint
-      const connection = new Connection(clusterApiUrl(network), 'confirmed');
-      const mintKeypair = Keypair.generate();
-      const mint = mintKeypair.publicKey;
+      const metadataUri = metaJson.metadataUri;
 
-      const feePayer = publicKey;
-
-      const lamportsForMint = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
-
-      const createMintAccountIx = SystemProgram.createAccount({
-        newAccountPubkey: mint,
-        lamports: lamportsForMint,
-        space: MINT_SIZE,
-        programId: TOKEN_PROGRAM_ID,
-        fromPubkey: feePayer,
-      });
-
-      const decimals = parseInt(formData.decimals);
-
-      const initMintIx = createInitializeMintInstruction(
-        mint,
-        decimals,
-        feePayer,
-        feePayer,
-        TOKEN_PROGRAM_ID
-      );
-
-      const mintAta = await getAssociatedTokenAddress(mint, feePayer);
-
-      const createMintAtaIx = createAssociatedTokenAccountInstruction(
-        feePayer,
-        mintAta,
-        feePayer,
-        mint,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-
-      const mintToIx = mintTo(
+      // Step 2: Client-side Atomic Token Creation
+      const result = await createSolanaToken({
         connection,
-        feePayer,
-        mint,
-        mintAta,
-        feePayer,
-        parseInt(formData.supply) * (10 ** decimals),
-        [],
-        TOKEN_PROGRAM_ID
-      );
-
-      // 3. Initialize the token with metadata
-      const metadataPDA = await findMetadataPda(mint);
-
-      const createMetadataIx = createCreateMetadataAccountV3Instruction({
-        metadata: metadataPDA,
-        mint: mint,
-        mintAuthority: feePayer,
-        payer: feePayer,
-        updateAuthority: feePayer,
-      }, {
-        createArgsV3: {
-          data: {
-            name: formData.name,
-            symbol: formData.symbol,
-            uri: metadataUri,
-            sellerFeeBasisPoints: 0,
-            creators: null,
-          },
-          isMutable: true,
-          collectionDetails: null
-        }
+        wallet,
+        tokenConfig: {
+          name: formData.name,
+          symbol: (formData.symbol || formData.ticker).toUpperCase(),
+          decimals: parseInt(formData.decimals || '6', 10),
+          supply: formData.supply || '1000000000',
+          metadataUri,
+          revokeFreeze: securityOptions.revokeFreeze,
+          revokeMint: securityOptions.revokeMint,
+          immutable: securityOptions.immutable,
+          priorityFeeMicroLamports: priorityFeeMap[prioritySpeed] || 250000,
+        },
+        onProgress: (step, msg) => {
+          onLaunchProgress(step, msg);
+        },
       });
 
-      // 4. Set up authorities based on advancedOptions
-      let freezeAuthority = null;
-      if (advancedOptions.freezeAuthority.freeze || advancedOptions.freezeAuthority.thaw || advancedOptions.freezeAuthority.update) {
-        freezeAuthority = Keypair.generate().publicKey;
-
-        const setFreezeAuthorityIx = setAuthority(
-          mint,
-          feePayer,
-          freezeAuthority,
-          AuthorityType.FreezeAccount,
-          feePayer,
-          []
-        );
-      }
-
-      const blockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
-      const tx = new Transaction({
-        recentBlockhash: blockhash,
-        feePayer,
-      }).add(
-        createMintAccountIx,
-        initMintIx,
-        createMintAtaIx,
-        mintToIx,
-        createMetadataIx
-      );
-
-      if (freezeAuthority) {
-        const setFreezeAuthorityIx = setAuthority(
-          mint,
-          feePayer,
-          freezeAuthority,
-          AuthorityType.FreezeAccount,
-          feePayer,
-          []
-        );
-        tx.add(setFreezeAuthorityIx);
-      }
-
-      tx.sign(mintKeypair);
-
-      const signedTransaction = await signTransaction(tx);
-      const serializedTransaction = signedTransaction.serialize();
-
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach(key => {
-        formDataToSend.append(key, formData[key]);
-      });
-      formDataToSend.append('freezeAuthorities', JSON.stringify(advancedOptions.freezeAuthority));
-      formDataToSend.append('serializedTransaction',  String.fromCharCode(...serializedTransaction));
-      formDataToSend.append('mintKey', mint.toBase58());
-
-      const response = await fetch('https://coiner-dev.lusmodigital.workers.dev/api/token/create', {
-        method: 'POST',
-        body: formDataToSend,
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create token');
-      }
-
-      setTokenAddress(result.tokenAddress);
-      setSuccess(true);
-
+      onLaunchSuccess(result);
     } catch (err) {
-      console.error('Error creating token:', err);
-      setError('Failed to create token. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Token launch error:', err);
+      onLaunchError(err.message || 'Failed to create token. Please check wallet balance.');
     }
   };
 
-  if (success) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl text-green-500">🎉 Token Created Successfully!</CardTitle>
-          <CardDescription>Your new token has been created on the {network} network.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p><strong>Token Name:</strong> {formData.name}</p>
-            <p><strong>Symbol:</strong> {formData.symbol}</p>
-            <p><strong>Token Address:</strong> <a href={`https://explorer.solana.com/address/${tokenAddress}?cluster=${network}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{tokenAddress}</a></p>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button onClick={() => window.open(`https://explorer.solana.com/address/${tokenAddress}?cluster=${network}`, '_blank')}>View on Explorer</Button>
-          <Button variant="outline" onClick={() => setSuccess(false)}>Create Another Token</Button>
-        </CardFooter>
-      </Card>
-    );
-  }
+  const imagePreviewUrl =
+    typeof formData.image === 'string'
+      ? formData.image
+      : formData.image instanceof File
+      ? URL.createObjectURL(formData.image)
+      : null;
 
   return (
-    <TooltipProvider>
-      <Card className="w-full max-w-4xl mx-auto">
-        <form onSubmit={createToken}>
-          <CardHeader>
-            <CardTitle>Create your Solana Token</CardTitle>
-            <CardDescription>Fill in the details below to create your new SPL token. Hover over the <span className="text-primary font-bold">?</span> icons for more information.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Token Name</Label>
-                  <Input id="name" name="name" placeholder="e.g. My Awesome Token" value={formData.name} onChange={handleInputChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="symbol">Token Symbol</Label>
-                  <Input id="symbol" name="symbol" placeholder="e.g. MAT" value={formData.symbol} onChange={handleInputChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" placeholder="A short and sweet description of your token." value={formData.description} onChange={handleInputChange} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="decimals">Decimal Places</Label>
-                  <Select name="decimals" value={formData.decimals} onValueChange={(value) => handleSelectChange('decimals', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select decimals" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[...Array(10).keys()].map(i => <SelectItem key={i} value={String(i)}>{i}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supply">Total Supply</Label>
-                  <Input id="supply" name="supply" type="number" placeholder="e.g. 1000000" value={formData.supply} onChange={handleInputChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="image">Token Image</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="image" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-800">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        {formData.image ? (
-                          <>
-                            <img src={URL.createObjectURL(formData.image)} alt="Token" className="w-32 h-32 object-cover rounded-full" />
-                            <p className="text-sm text-gray-400 mt-2">{formData.image.name}</p>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                            </svg>
-                            <p className="mb-2 text-sm text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                          </>
-                        )}
-                      </div>
-                      <Input id="image" type="file" className="hidden" onChange={handleImageUpload} />
-                    </label>
+    <Card className="w-full bg-gray-900/90 border border-gray-800 shadow-2xl backdrop-blur-sm">
+      <CardHeader className="border-b border-gray-800/80 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-2xl font-extrabold text-white flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-emerald-400" /> Token Generator
+            </CardTitle>
+            <CardDescription className="text-gray-400 text-sm mt-0.5">
+              Atomic Solana token deployment at raw rent-exemption cost. Zero platform fees.
+            </CardDescription>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400">
+            <Coins className="w-3.5 h-3.5" /> 100% Raw Gas
+          </span>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6 pt-6">
+        {/* Token Basics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-xs font-medium text-gray-300">
+              Token Name <span className="text-emerald-400">*</span>
+            </Label>
+            <Input
+              id="name"
+              name="name"
+              placeholder="e.g., Solana Cat"
+              value={formData.name || ''}
+              onChange={handleInputChange}
+              maxLength={32}
+              className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-emerald-500"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="symbol" className="text-xs font-medium text-gray-300">
+              Symbol / Ticker <span className="text-emerald-400">*</span>
+            </Label>
+            <Input
+              id="symbol"
+              name="symbol"
+              placeholder="e.g., SCAT"
+              value={formData.symbol || formData.ticker || ''}
+              onChange={handleInputChange}
+              maxLength={10}
+              className="bg-gray-950 border-gray-800 font-mono text-emerald-400 uppercase placeholder-gray-600 focus:border-emerald-500"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Decimals & Supply */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="decimals" className="text-xs font-medium text-gray-300">
+                Decimals
+              </Label>
+              <span className="text-[10px] text-gray-500">6 (Meme) or 9 (SPL)</span>
+            </div>
+            <Input
+              id="decimals"
+              name="decimals"
+              type="number"
+              min="0"
+              max="9"
+              placeholder="6"
+              value={formData.decimals ?? '6'}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 font-mono text-white focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="supply" className="text-xs font-medium text-gray-300">
+                Total Supply <span className="text-emerald-400">*</span>
+              </Label>
+              <span className="text-[10px] text-emerald-400/80">100% minted to you</span>
+            </div>
+            <Input
+              id="supply"
+              name="supply"
+              type="number"
+              min="1"
+              placeholder="1000000000"
+              value={formData.supply ?? '1000000000'}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 font-mono text-white focus:border-emerald-500"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-1.5">
+          <Label htmlFor="description" className="text-xs font-medium text-gray-300">
+            Description / Story
+          </Label>
+          <Textarea
+            id="description"
+            name="description"
+            placeholder="Describe your coin, community lore, or mission..."
+            value={formData.description || ''}
+            onChange={handleInputChange}
+            rows={3}
+            maxLength={500}
+            className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-emerald-500 resize-none text-sm"
+          />
+        </div>
+
+        {/* Logo / Image Upload */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-gray-300">Token Logo (IPFS)</Label>
+          <div
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className="flex items-center justify-center w-full"
+          >
+            <label
+              htmlFor="image-upload"
+              className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-800 hover:border-emerald-500/60 rounded-xl cursor-pointer bg-gray-950/60 hover:bg-gray-950 transition-colors p-4"
+            >
+              {imagePreviewUrl ? (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Logo preview"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-emerald-500/50 shadow-md"
+                  />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-white">Logo Selected</p>
+                    <p className="text-xs text-gray-400">Click or drag another image to replace</p>
                   </div>
                 </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center">
+                  <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                  <p className="text-sm text-gray-300 font-medium">
+                    <span className="text-emerald-400">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, WebP or GIF (Square, up to 5MB)</p>
+                </div>
+              )}
+              <input
+                id="image-upload"
+                type="file"
+                className="hidden"
+                accept="image/png, image/jpeg, image/gif, image/webp"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleImageFile(e.target.files[0]);
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Social Links (Collapsible/Accordion or Simple Grid) */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono">
+              Social Links (Optional)
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              name="website"
+              placeholder="Website URL (https://...)"
+              value={formData.website || ''}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+            />
+            <Input
+              name="twitter"
+              placeholder="Twitter / X (@handle or URL)"
+              value={formData.twitter || ''}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+            />
+            <Input
+              name="telegram"
+              placeholder="Telegram Link (t.me/...)"
+              value={formData.telegram || ''}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+            />
+            <Input
+              name="discord"
+              placeholder="Discord Invite Link"
+              value={formData.discord || ''}
+              onChange={handleInputChange}
+              className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Security & Trust Controls */}
+        <div className="space-y-3 pt-2 border-t border-gray-800/80">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Rug-Proof Controls (Free)
+            </span>
+            <span className="text-[11px] text-emerald-400 font-mono">100% Free Included</span>
+          </div>
+
+          <div className="space-y-2.5 bg-gray-950/70 p-3.5 rounded-xl border border-gray-800/80">
+            {/* Revoke Freeze */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-semibold text-white">Revoke Freeze Authority</Label>
+                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                    Raydium Essential
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Required to create Raydium pools and get verified on DexScreener/RugCheck.
+                </p>
               </div>
+              <Switch
+                checked={securityOptions.revokeFreeze}
+                onCheckedChange={(checked) =>
+                  setSecurityOptions((prev) => ({ ...prev, revokeFreeze: checked }))
+                }
+              />
             </div>
 
-            <Separator />
-
-            <Tabs defaultValue="social">
-              <TabsList>
-                <TabsTrigger value="social">Social Links & Tags</TabsTrigger>
-                <TabsTrigger value="advanced">Advanced Options</TabsTrigger>
-              </TabsList>
-              <TabsContent value="social" className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <Input id="website" name="website" placeholder="https://..." value={formData.website} onChange={handleInputChange} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="twitter">Twitter</Label>
-                    <Input id="twitter" name="twitter" placeholder="https://twitter.com/..." value={formData.twitter} onChange={handleInputChange} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="telegram">Telegram</Label>
-                    <Input id="telegram" name="telegram" placeholder="https://t.me/..." value={formData.telegram} onChange={handleInputChange} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="discord">Discord</Label>
-                    <Input id="discord" name="discord" placeholder="https://discord.gg/..." value={formData.discord} onChange={handleInputChange} />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="tags">Tags</Label>
-                    <Input id="tags" name="tags" placeholder="e.g. defi, nft, gaming" value={formData.tags} onChange={handleInputChange} />
-                  </div>
+            {/* Revoke Mint */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-800/60">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-semibold text-white">Revoke Mint Authority</Label>
+                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                    Zero Inflation
+                  </span>
                 </div>
-              </TabsContent>
-              <TabsContent value="advanced" className="pt-6 space-y-6">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="modifyCreatorAllowed" className="font-semibold">Allow Creator Metadata Modification</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-pointer text-primary font-bold">?</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>This allows you to change the creator information (names, shares) after the token has been created. This is useful for adding or removing creators later.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Switch id="modifyCreatorAllowed" checked={advancedOptions.modifyCreatorAllowed} onCheckedChange={(value) => handleAdvancedOptionsChange('modifyCreatorAllowed', value)} />
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="customAddress" className="font-semibold">Custom Token Address</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-pointer text-primary font-bold">?</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>This feature is not yet implemented. It will allow you to choose a custom prefix for your token's address.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Switch id="customAddress" checked={advancedOptions.customAddress} onCheckedChange={(value) => handleAdvancedOptionsChange('customAddress', value)} disabled />
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="whitelistSupplyDistribution" className="font-semibold">Multi-wallet Supply Distribution</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-pointer text-primary font-bold">?</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>This feature is not yet implemented. It will allow you to distribute the initial supply to multiple wallets upon creation.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Switch id="whitelistSupplyDistribution" checked={advancedOptions.whitelistSupplyDistribution} onCheckedChange={(value) => handleAdvancedOptionsChange('whitelistSupplyDistribution', value)} disabled />
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="addMintAuthority" className="font-semibold">Enable Minting More Tokens</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-pointer text-primary font-bold">?</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>By default, the mint authority is revoked after creation. Enable this to retain the ability to mint more tokens in the future.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Switch id="addMintAuthority" checked={advancedOptions.addMintAuthority} onCheckedChange={(value) => handleAdvancedOptionsChange('addMintAuthority', value)} />
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Label className="font-semibold">Freeze Authorities</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-pointer text-primary font-bold">?</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Freeze authorities allow you to freeze and unfreeze token accounts, effectively controlling who can transact with the token. This is an advanced feature and should be used with caution.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="freeze" checked={advancedOptions.freezeAuthority.freeze} onCheckedChange={(value) => handleFreezeAuthorityChange('freeze', value)} />
-                      <label htmlFor="freeze" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Enable Freeze Authority (+0.5 SOL)
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="thaw" checked={advancedOptions.freezeAuthority.thaw} onCheckedChange={(value) => handleFreezeAuthorityChange('thaw', value)} />
-                      <label htmlFor="thaw" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Enable Thaw Authority (+0.5 SOL)
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="update" checked={advancedOptions.freezeAuthority.update} onCheckedChange={(value) => handleFreezeAuthorityChange('update', value)} />
-                      <label htmlFor="update" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        Enable Update Authority (+0.5 SOL)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="flex justify-between items-center">
-            <div>
-              <p className="text-lg font-semibold">Total Fee: {fee} SOL</p>
+                <p className="text-[11px] text-gray-400">
+                  Caps total supply forever. No more tokens can ever be minted.
+                </p>
+              </div>
+              <Switch
+                checked={securityOptions.revokeMint}
+                onCheckedChange={(checked) =>
+                  setSecurityOptions((prev) => ({ ...prev, revokeMint: checked }))
+                }
+              />
             </div>
-            <Button type="submit" disabled={loading || !publicKey}>
-              {loading ? 'Creating Token...' : (publicKey ? 'Create Token' : 'Connect Wallet to Create')}
-            </Button>
-          </CardFooter>
-          {error && <p className="text-red-500 text-center mt-4">{error}</p>}
-        </form>
-      </Card>
-    </TooltipProvider>
+
+            {/* Immutable Metadata */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-800/60">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-semibold text-white">Immutable Metadata</Label>
+                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                    Permanent
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Permanently locks token name, symbol, logo, and metadata.
+                </p>
+              </div>
+              <Switch
+                checked={securityOptions.immutable}
+                onCheckedChange={(checked) =>
+                  setSecurityOptions((prev) => ({ ...prev, immutable: checked }))
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Priority Fee Selection */}
+        <div className="space-y-2 pt-2 border-t border-gray-800/80">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-400" /> Transaction Priority Fee
+            </span>
+            <span className="text-[11px] text-gray-400 font-mono">Faster Solana inclusion</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'normal', name: 'Normal', fee: '~0.00001 SOL' },
+              { id: 'fast', name: 'Fast', fee: '~0.00005 SOL' },
+              { id: 'turbo', name: 'Turbo', fee: '~0.00020 SOL' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPrioritySpeed(p.id)}
+                className={`p-2.5 rounded-lg border text-left transition-all ${
+                  prioritySpeed === p.id
+                    ? 'bg-emerald-950/60 border-emerald-500 text-white'
+                    : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
+                }`}
+              >
+                <div className="text-xs font-bold">{p.name}</div>
+                <div className="text-[10px] text-gray-500 font-mono mt-0.5">{p.fee}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Rent Cost Breakdown */}
+        <div className="bg-gray-950 rounded-xl p-4 border border-gray-800/90 space-y-2">
+          <div className="flex items-center justify-between text-xs pb-2 border-b border-gray-800">
+            <span className="text-gray-400 font-mono uppercase">Cost Breakdown (On-Chain Rent)</span>
+            <span className="text-emerald-400 font-mono font-bold">100% Transparent</span>
+          </div>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between text-gray-400">
+              <span>SPL Mint Account (82 bytes):</span>
+              <span className="font-mono">{rentCosts.mintRentSol} SOL</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Creator Token ATA (165 bytes):</span>
+              <span className="font-mono">{rentCosts.ataRentSol} SOL</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Metaplex Metadata PDA (~679 bytes):</span>
+              <span className="font-mono">{rentCosts.metadataRentSol} SOL</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Priority & Network Fee:</span>
+              <span className="font-mono">~0.00010 SOL</span>
+            </div>
+            <div className="flex justify-between text-emerald-400 font-semibold pt-1 border-t border-gray-800/60">
+              <span>coiner.dev Platform Service Fee:</span>
+              <span className="font-mono">0.00000 SOL (FREE)</span>
+            </div>
+            <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-gray-800">
+              <span>Total Estimated Network Cost:</span>
+              <span className="font-mono text-emerald-400">{rentCosts.estimatedTotalSol} SOL</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Primary Action Button */}
+        <div className="pt-2">
+          <Button
+            onClick={handleCreateToken}
+            disabled={!connected || !isFormValid}
+            className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {!connected
+              ? 'Connect Solana Wallet to Launch'
+              : !isFormValid
+              ? 'Fill in Token Name, Symbol & Supply'
+              : `Create $${(formData.symbol || formData.ticker || 'COIN').toUpperCase()} (~${rentCosts.estimatedTotalSol} SOL)`}
+          </Button>
+          <p className="text-[11px] text-center text-gray-500 mt-2">
+            No smart contract lockup. You retain 100% of supply in your own wallet immediately.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

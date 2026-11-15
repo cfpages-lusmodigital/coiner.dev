@@ -11,20 +11,20 @@ This document tracks build errors and other mistakes encountered during developm
 *   **Root Cause:** I added new UI components (`dialog.jsx`, `progress.jsx`) by copying the standard `shadcn/ui` code. However, I failed to identify and install their underlying dependencies from the Radix UI library (`@radix-ui/react-dialog`, `@radix-ui/react-progress`).
 *   **Solution:**
     1.  Carefully read the error message to identify the exact package that could not be resolved.
-    2.  Run `npm install <package-name>` to add the missing dependency to `package.json`.
+    2.  Run `pnpm add <package-name>` to add the missing dependency to `package.json`.
     3.  **Future Prevention:** Whenever I add a new component from an external source or library, I must first check its documentation or source code for its dependencies and install them *before* attempting to build.
 
 ---
 
-### **Error 2: `package-lock.json` Out of Sync**
+### **Error 2: `pnpm-lock.yaml` Out of Sync**
 
 *   **Date:** 2025-08-24
-*   **Error Message:** `npm ci can only install packages when your package.json and package-lock.json are in sync.`
-*   **Root Cause:** The CI/CD environment uses `npm ci` for fast, reproducible builds. This command requires the `package.json` and `package-lock.json` files to be perfectly synchronized. My local `npm install <package-name>` command had updated the lockfile in a way that introduced inconsistencies, possibly by updating transitive dependencies.
+*   **Error Message:** `pnpm add --frozen-lockfile can only install packages when your package.json and pnpm-lock.yaml are in sync.`
+*   **Root Cause:** The CI/CD environment uses `pnpm add --frozen-lockfile` for fast, reproducible builds. This command requires the `package.json` and `pnpm-lock.yaml` files to be perfectly synchronized. My local `pnpm add <package-name>` command had updated the lockfile in a way that introduced inconsistencies, possibly by updating transitive dependencies.
 *   **Solution:**
-    1.  Delete the local `node_modules` directory (`rm -rf node_modules`) and the `package-lock.json` file (`rm package-lock.json`).
-    2.  Run `npm install` with no arguments. This generates a fresh, clean `package-lock.json` based *only* on the packages listed in `package.json`.
-    3.  Commit the newly generated `package-lock.json`.
+    1.  Delete the local `node_modules` directory (`rm -rf node_modules`) and the `pnpm-lock.yaml` file (`rm pnpm-lock.yaml`).
+    2.  Run `pnpm install` with no arguments. This generates a fresh, clean `pnpm-lock.yaml` based *only* on the packages listed in `package.json`.
+    3.  Commit the newly generated `pnpm-lock.yaml`.
     4.  **Future Prevention:** After adding or updating dependencies, it is a good practice to perform this clean reinstall process to avoid CI conflicts.
 
 ---

@@ -1,63 +1,87 @@
-# Project Deployment & Configuration Guide
+# coiner.dev — Sovereign Solana Token & Meme Coin Creator
 
-## 1. Introduction
+A sovereign, trustless, client-side web utility for deploying Solana SPL tokens and meme coins at **raw network rent cost (~0.0067 to 0.015 SOL)** with **0.00 SOL platform fees** (saving 97%+ compared to predatory 0.20–0.50+ SOL third-party tools).
 
-This guide provides a step-by-step walkthrough for deploying this application using Cloudflare Pages and its integrated Functions feature. The backend logic for creating tokens has been simplified and no longer requires a separate Cloudflare Worker setup.
+---
 
-## 2. Deployment Architecture
+## 1. Architectural Overview
 
-This project uses **Cloudflare Pages Functions** to handle server-side logic.
+```
+                      +---------------------------------------+
+                      |           Connected User Wallet        |
+                      |          (Phantom, Solflare, etc.)    |
+                      +-------------------+-------------------+
+                                          |
+                      1. Uploads Image    | 3. Signs & broadcasts atomic tx
+                         & Metadata       |    (User pays ~0.007 SOL rent)
+                                          |
+                                          v
++-----------------------------+     +-----------------------------------+
+|   Cloudflare Pages Function |     |          Solana Blockchain        |
+|  /api/upload-metadata.js    |     |                                   |
+|  (Stateless IPFS Proxy)     |     |  1. ComputeBudget (Priority Fee)  |
+|                             |     |  2. SystemProgram: Create Account |
+|  - Validates MIME & size    |     |  3. SPL: InitializeMint           |
+|  - Pins logo & JSON to IPFS |     |  4. SPL: Create ATA (Idempotent)  |
+|  - Zero private keys/wallets|     |  5. SPL: MintTo (100% to ATA)     |
+|  - Returns metadataUri      |     |  6. Metaplex: CreateMetadata V3   |
++-----------------------------+     |  7. SPL: Revoke FreezeAuthority   |
+                                    |  8. SPL: Revoke MintAuthority     |
+                                    +-----------------------------------+
+```
 
-*   The frontend is a standard Vite/React application.
-*   The backend logic for creating a Solana token resides in `/functions/api/token/create.js`. This function is automatically detected and deployed by Cloudflare Pages.
+### Key Pillars
+- **Non-Custodial & Sovereign**: The server never holds a private key, never mints tokens, and never pays fees.
+- **Single Atomic Transaction**: Mint creation, supply minting, Metaplex metadata attachment, freeze revocation, and mint revocation execute atomically in **one single transaction** (< 870 bytes wire size).
+- **Raydium & RugCheck Ready**: Revoking Freeze Authority ensures full compatibility with Raydium CPMM / DLMM liquidity pools and delivers an A-Grade rating on RugCheck.xyz.
 
-This approach simplifies deployment, as both the website and the serverless API are managed in a single place.
+---
 
-## 3. Deployment Steps
+## 2. On-Chain Cost Breakdown
 
-### Step 1: Connect Your Repository to Cloudflare Pages
+| Component | Account Size | Network Cost (Rent Exemption) |
+|---|---|---|
+| **SPL Mint Account** | 82 bytes | ~0.0010668 SOL |
+| **Creator Associated Token Account (ATA)** | 165 bytes | ~0.00148844 SOL |
+| **Metaplex Metadata PDA** | ~679 bytes | ~0.00409956 SOL |
+| **Network Gas & Priority Fee** | — | ~0.00010000 SOL |
+| **coiner.dev Platform Fee** | — | **0.00000000 SOL (FREE)** |
+| **Total Estimated Cost** | — | **~0.00676 SOL** |
 
-1.  Push the project code to your own GitHub repository.
-2.  In your Cloudflare dashboard, go to **Workers & Pages**.
-3.  Click **Create Application** -> **Pages** -> **Connect to Git**.
-4.  Select your project's repository and begin setup.
+*Compare against Smithii / Orion / pump launchpads charging 0.20 to 0.70+ SOL.*
 
-### Step 2: Configure the Build Settings
+---
 
-When prompted, use the following build settings:
+## 3. Local Development
 
-*   **Framework Preset:** `Vite`
-*   **Build command:** `npm run build`
-*   **Build output directory:** `dist`
-*   **Root directory:** (leave as is)
+### Prerequisites
+- Node.js >= 20
+- pnpm >= 10
 
-### Step 3: Set Required Environment Variables
+### Quick Start
+```bash
+# Install dependencies
+pnpm install
 
-This is the most critical step. The application will not work without these settings.
+# Start local development server
+pnpm run dev
+```
 
-1.  In your new Pages project, go to **Settings** -> **Environment variables**.
-2.  Add the following variables under **Production** (do not add them as Preview variables unless you intend to test in preview environments).
-3.  For each variable, click **Encrypt** to ensure it is stored securely.
+The app will run at `http://localhost:5173`. When testing locally without Pinata credentials, `functions/api/upload-metadata.js` automatically produces deterministic mock IPFS URIs so token minting on Solana Devnet is never blocked.
 
-#### Required Variables:
+---
 
-1.  **`PINATA_API_KEY`**
-    *   **Description**: Your API Key for the Pinata IPFS service, used for storing token metadata and images.
-    *   **Value**: `Your_Pinata_API_Key_Here`
+## 4. Cloudflare Pages Deployment
 
-2.  **`PINATA_SECRET_API_KEY`**
-    *   **Description**: Your secret API Key for the Pinata IPFS service.
-    *   **Value**: `Your_Pinata_Secret_API_Key_Here`
+This project is connected directly to Cloudflare Pages:
+- **Project Name**: `coiner-app`
+- **Subdomain**: `https://coiner-app-bze.pages.dev`
+- **Source**: `cfpages-lusmodigital/coiner.dev` (Branch `main`)
+- **Build Command**: `pnpm run build`
+- **Build Output Directory**: `dist`
+- **Functions Directory**: `functions/` (auto-detected by Cloudflare Pages)
 
-3.  **`PAYER_PRIVATE_KEY`**
-    *   **Description**: The private key of the Solana wallet that will pay for the token creation transactions. This key must be in a specific **stringified JSON array format**.
-    *   **How to get it**: Export the secret key from your Phantom wallet (or other wallet) and format it as a JSON array of numbers.
-    *   **Value Example**: `[123,45,67,89,...,234]` (Replace with your actual 64-byte secret key array).
-    *   **IMPORTANT**: This wallet must have sufficient SOL on the **Devnet** to cover transaction fees.
-
-### Step 4: Save and Deploy
-
-1.  After configuring the build settings and environment variables, click **Save and Deploy**.
-2.  Cloudflare will now build your project and deploy it. You can monitor the progress in the "Deployments" tab.
-
-Once the deployment is complete, your Solana token creator application will be live. The frontend will be able to call the `/api/token/create` endpoint to create new tokens.
+### Optional Environment Variables (Cloudflare Pages Dashboard)
+Under **Workers & Pages** -> **coiner-app** -> **Settings** -> **Environment variables**:
+- `PINATA_JWT`: Secret Pinata Bearer JWT token for production IPFS pinning.
+- `VITE_SOLANA_RPC_HOST`: Dedicated Helius RPC URL (e.g. `https://mainnet.helius-rpc.com/?api-key=...`).

@@ -1,54 +1,135 @@
+// src/components/CreatorPage.jsx
 import React, { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import CoinForm from './CoinForm';
+import TokenForm from './TokenForm';
 import LivePreview from './LivePreview';
 import LaunchModal from './LaunchModal';
+import FAQ from './FAQ';
+import StepGuide from './StepGuide';
+import { Rocket, ShieldCheck, Zap, Coins, CheckCircle2 } from 'lucide-react';
 
-const CreatorPage = () => {
-  const { connected } = useWallet();
+const CreatorPage = ({ network = 'devnet' }) => {
   const [formData, setFormData] = useState({
     name: '',
-    ticker: '',
+    symbol: '',
     description: '',
+    supply: '1000000000',
+    decimals: '6',
     image: null,
+    website: '',
+    twitter: '',
+    telegram: '',
+    discord: '',
   });
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleLaunch = () => {
-    console.log("Launching coin with data:", formData);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [launchStatus, setLaunchStatus] = useState('idle'); // idle | uploading | preparing | signing | broadcasting | confirming | success | error
+  const [statusMessage, setStatusMessage] = useState('');
+  const [launchError, setLaunchError] = useState('');
+  const [launchResult, setLaunchResult] = useState(null);
+
+  const handleLaunchStart = () => {
+    setLaunchError('');
+    setLaunchResult(null);
+    setLaunchStatus('uploading');
+    setStatusMessage('Initiating token deployment...');
     setIsModalOpen(true);
+  };
+
+  const handleLaunchProgress = (step, msg) => {
+    setLaunchStatus(step);
+    setStatusMessage(msg);
+  };
+
+  const handleLaunchSuccess = (result) => {
+    setLaunchStatus('success');
+    setStatusMessage('Token successfully deployed on-chain!');
+    setLaunchResult(result);
+  };
+
+  const handleLaunchError = (errorMsg) => {
+    setLaunchStatus('error');
+    setLaunchError(errorMsg);
   };
 
   return (
     <>
-      <div className="container mx-auto py-12 px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Launch Your Own Meme Coin on Solana
+      <div className="container mx-auto py-10 px-4 max-w-7xl">
+        {/* Hero Section */}
+        <div className="text-center mb-10 max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            100% Free & Trustless • Raw Solana Gas Cost Only (~0.007 SOL)
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            Launch Your Solana Token with{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+              Zero Platform Fee
+            </span>
           </h1>
-          <p className="mt-4 text-lg text-gray-400">
-            No code, no hassle. Go from idea to live market in minutes.
+
+          <p className="text-base sm:text-lg text-gray-400 leading-relaxed">
+            Create SPL & meme coins in one atomic transaction directly from your wallet.
+            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and never pay predatory platform markups.
           </p>
+
+          {/* Quick Value Props */}
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-gray-300">
+            <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              RugCheck A-Grade Compatible
+            </span>
+            <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+              <Zap className="w-4 h-4 text-amber-400" />
+              1-Click Atomic Deployment
+            </span>
+            <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+              <Coins className="w-4 h-4 text-cyan-400" />
+              Raydium CPMM / DLMM Ready
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          <div>
-            <CoinForm
+        {/* Form and Preview Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-7">
+            <TokenForm
               formData={formData}
               setFormData={setFormData}
-              handleLaunch={handleLaunch}
-              walletConnected={connected}
+              onLaunchStart={handleLaunchStart}
+              onLaunchProgress={handleLaunchProgress}
+              onLaunchSuccess={handleLaunchSuccess}
+              onLaunchError={handleLaunchError}
+              network={network}
             />
           </div>
-          <div>
+
+          <div className="lg:col-span-5">
             <LivePreview formData={formData} />
           </div>
         </div>
+
+        {/* Step Guide & Educational Section */}
+        <div className="mt-16 border-t border-gray-800/80 pt-12">
+          <StepGuide />
+        </div>
+
+        {/* FAQ Section */}
+        <div className="mt-12">
+          <FAQ />
+        </div>
       </div>
+
       <LaunchModal
         open={isModalOpen}
         setOpen={setIsModalOpen}
-        coinData={formData}
+        tokenData={formData}
+        status={launchStatus}
+        statusMessage={statusMessage}
+        error={launchError}
+        result={launchResult}
+        network={network}
+        onRetry={handleLaunchStart}
       />
     </>
   );
