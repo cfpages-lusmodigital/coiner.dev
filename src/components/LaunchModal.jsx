@@ -159,7 +159,7 @@ const LaunchModal = ({
             )}
 
             <DialogFooter className="mt-4 text-center text-xs text-gray-500">
-              Network: <span className="font-semibold text-gray-400 uppercase">{network}</span> • Zero platform fee
+              Network: <span className="font-semibold text-gray-400 uppercase">{network}</span> • 100% Non-Custodial
             </DialogFooter>
           </div>
         )}
@@ -216,7 +216,7 @@ const LaunchModal = ({
                 ${tokenData?.symbol} is Live!
               </DialogTitle>
               <DialogDescription className="text-emerald-400/90 text-sm">
-                SPL Token and Metaplex metadata deployed with zero platform markup.
+                SPL Token and Metaplex metadata deployed successfully on Solana.
               </DialogDescription>
             </DialogHeader>
 

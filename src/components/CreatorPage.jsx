@@ -56,21 +56,21 @@ const CreatorPage = ({ network = 'devnet' }) => {
       <div className="container mx-auto py-10 px-4 max-w-7xl">
         {/* Hero Section */}
         <div className="text-center mb-10 max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            100% Free & Trustless • Raw Solana Gas Cost Only (~0.007 SOL)
+            Sovereign Solana Creator • Flat 0.10 SOL Public Fee • 0.00 SOL Admin Mode
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
             Launch Your Solana Token with{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
-              Zero Platform Fee
+              Maximum Sovereignty
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-gray-400 leading-relaxed">
             Create SPL & meme coins in one atomic transaction directly from your wallet.
-            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and never pay predatory platform markups.
+            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and enjoy a flat 0.10 SOL fee—saving up to 80% vs competitor markups.
           </p>
 
           {/* Quick Value Props */}

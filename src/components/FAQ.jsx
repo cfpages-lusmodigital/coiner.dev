@@ -1,5 +1,5 @@
 // src/components/FAQ.jsx
-import React, { useState } from 'react';
+import React from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpCircle } from 'lucide-react';
@@ -7,7 +7,11 @@ import { HelpCircle } from 'lucide-react';
 const faqItems = [
   {
     question: "How much does it cost to create a token on coiner.dev?",
-    answer: "Exactly 0.0067 to 0.015 SOL on Solana mainnet. This is 100% the raw Solana network rent for the Mint account (82B), your Associated Token Account (165B), and the Metaplex Metadata PDA (~679B). coiner.dev charges 0.00 SOL in platform service fees — saving you over 97% compared to predatory tools that charge 0.20 to 0.50+ SOL."
+    answer: "coiner.dev charges a flat, competitive 0.10 SOL platform fee for public creators — saving you up to 80% compared to third-party tools (such as Smithii or Orion which charge 0.20 to 0.50+ SOL). In addition to the service fee, the Solana network charges raw rent (~0.007 SOL) and Metaplex protocol creation fee (0.01 SOL on mainnet). For the platform administrator (admin@alampintar.org), a 0.00 SOL platform fee exemption applies automatically."
+  },
+  {
+    question: "How does the Admin Fee Exemption work?",
+    answer: "When the administrator signs in via Clerk with admin@alampintar.org (or connects an authorized admin Solana wallet), coiner.dev activates Admin Mode. This waives the 0.10 SOL platform fee (0.00 SOL fee), charging strictly the raw on-chain Solana rent and gas."
   },
   {
     question: "Is it safe and non-custodial?",
@@ -32,12 +36,6 @@ const faqItems = [
 ];
 
 const FAQ = () => {
-  const [openItem, setOpenItem] = useState(null);
-
-  const handleToggle = (index) => {
-    setOpenItem(openItem === index ? null : index);
-  };
-
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <Card className="bg-gray-900/80 border-gray-800 shadow-xl">

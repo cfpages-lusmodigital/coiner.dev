@@ -48,8 +48,8 @@ export async function onRequestPost(context) {
 
     // Check Pinata credentials in Pages environment
     const pinataJwt = env.PINATA_JWT;
-    const pinataApiKey = env.PINATA_API_KEY;
-    const pinataSecretKey = env.PINATA_SECRET_API_KEY;
+    const pinataApiKey = env.PINATA_API_KEY || env.VITE_PINATA_API_KEY;
+    const pinataSecretKey = env.PINATA_SECRET_API_KEY || env.VITE_PINATA_SECRET_API_KEY;
 
     const hasJwt = !!pinataJwt;
     const hasKeys = !!(pinataApiKey && pinataSecretKey);

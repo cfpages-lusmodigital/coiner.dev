@@ -57,30 +57,44 @@ export function calculateRawAmount(supplyStr, decimals) {
 }
 
 /**
- * Pre-estimates exact on-chain rent costs in SOL
+ * Pre-estimates exact on-chain rent costs in SOL (with transparent itemized breakdown)
  */
-export async function estimateRentCosts(connection) {
+export async function estimateRentCosts(connection, platformFeeSol = 0, isMainnet = false) {
+  const metaplexProtocolLamports = isMainnet ? 10_000_000n : 0n; // 0.01 SOL on mainnet
   try {
-    const mintRent = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
+    const mintRent = BigInt(await connection.getMinimumBalanceForRentExemption(MINT_SIZE));
     // Classic ATA is 165 bytes
-    const ataRent = await connection.getMinimumBalanceForRentExemption(165);
+    const ataRent = BigInt(await connection.getMinimumBalanceForRentExemption(165));
     // Metaplex Metadata V3 PDA is ~679 bytes
-    const metadataRent = await connection.getMinimumBalanceForRentExemption(679);
+    const metadataRent = BigInt(await connection.getMinimumBalanceForRentExemption(679));
 
-    const totalLamports = mintRent + ataRent + metadataRent + 10000; // includes tx fee buffer
+    const feeLamports = BigInt(Math.round(Number(platformFeeSol) * 1e9));
+    const networkGasBuffer = 100_000n; // 0.00010 SOL buffer for gas & priority fee
+
+    const totalLamports =
+      mintRent + ataRent + metadataRent + metaplexProtocolLamports + networkGasBuffer + feeLamports;
+
     return {
-      mintRentSol: (mintRent / 1e9).toFixed(5),
-      ataRentSol: (ataRent / 1e9).toFixed(5),
-      metadataRentSol: (metadataRent / 1e9).toFixed(5),
-      estimatedTotalSol: (totalLamports / 1e9).toFixed(5),
+      mintRentSol: (Number(mintRent) / 1e9).toFixed(5),
+      ataRentSol: (Number(ataRent) / 1e9).toFixed(5),
+      metadataRentSol: (Number(metadataRent) / 1e9).toFixed(5),
+      metaplexProtocolSol: (Number(metaplexProtocolLamports) / 1e9).toFixed(5),
+      networkGasSol: '0.00010',
+      platformFeeSol: Number(platformFeeSol).toFixed(5),
+      estimatedTotalSol: (Number(totalLamports) / 1e9).toFixed(5),
     };
   } catch {
-    // Default cached values if offline/rate-limited
+    const fee = Number(platformFeeSol);
+    const metaProtocol = isMainnet ? 0.01 : 0.0;
+    const baseTotal = 0.00676 + metaProtocol + fee;
     return {
       mintRentSol: '0.00107',
       ataRentSol: '0.00149',
       metadataRentSol: '0.00410',
-      estimatedTotalSol: '0.00676',
+      metaplexProtocolSol: metaProtocol.toFixed(5),
+      networkGasSol: '0.00010',
+      platformFeeSol: fee.toFixed(5),
+      estimatedTotalSol: baseTotal.toFixed(5),
     };
   }
 }
@@ -104,6 +118,8 @@ export async function createSolanaToken({
     revokeMint = true,
     immutable = true,
     priorityFeeMicroLamports = 50000, // 0.05 lamports/CU default
+    platformFeeSol = 0,
+    treasuryAddress = import.meta.env.VITE_TREASURY_WALLET,
   } = tokenConfig;
 
   if (!wallet || !wallet.publicKey) {
@@ -133,8 +149,15 @@ export async function createSolanaToken({
     MINT_SIZE
   );
 
-  // 4. Calculate total raw supply (BigInt safe)
-  const rawSupply = calculateRawAmount(String(supply), decimals);
+  // 4. Calculate total raw supply (BigInt safe with u64 boundary check)
+  const safeDecimals = Math.max(0, Math.min(9, parseInt(decimals || '6', 10)));
+  const rawSupply = calculateRawAmount(String(supply), safeDecimals);
+  const U64_MAX = 18446744073709551615n;
+  if (rawSupply > U64_MAX) {
+    throw new Error(
+      'Total raw supply exceeds Solana u64 maximum limit (18,446,744,073,709,551,615). Please reduce supply or decimals.'
+    );
+  }
 
   // 5. Build Transaction
   const transaction = new Transaction();
@@ -154,7 +177,27 @@ export async function createSolanaToken({
     })
   );
 
-  // 5b. Create Account for Mint
+  // 5b. Platform Service Fee Transfer (Public: 0.10 SOL to Treasury; Admin: 0.00 SOL)
+  if (platformFeeSol > 0) {
+    if (!treasuryAddress) {
+      throw new Error(
+        'Platform treasury wallet (VITE_TREASURY_WALLET) is not configured. Platform fee cannot be collected.'
+      );
+    }
+    const feeLamports = BigInt(Math.round(Number(platformFeeSol) * 1e9));
+    if (feeLamports > 0n) {
+      const treasuryPubkey = new PublicKey(treasuryAddress);
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: userPublicKey,
+          toPubkey: treasuryPubkey,
+          lamports: feeLamports,
+        })
+      );
+    }
+  }
+
+  // 5c. Create Account for Mint
   transaction.add(
     SystemProgram.createAccount({
       fromPubkey: userPublicKey,

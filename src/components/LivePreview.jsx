@@ -10,9 +10,12 @@ import {
   Flame,
   CheckCircle2,
   ExternalLink,
+  Crown,
 } from 'lucide-react';
+import { useAdminStatus } from '@/lib/clerk';
 
 const LivePreview = ({ formData, advancedOptions = {} }) => {
+  const { isAdmin } = useAdminStatus();
   const {
     name = '',
     symbol = '',
@@ -144,15 +147,22 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
           <span className="font-semibold text-white flex items-center gap-1">
             <Flame className="w-3.5 h-3.5 text-amber-400" /> Platform Fee Comparison
           </span>
-          <span className="text-emerald-400 font-mono font-bold">Save ~97% SOL</span>
+          <span className="text-emerald-400 font-mono font-bold">
+            {isAdmin ? '👑 100% Free' : 'Save up to 80%'}
+          </span>
         </div>
         <div className="space-y-2 text-xs">
           <div className="flex justify-between items-center bg-gray-900/80 p-2 rounded border border-emerald-500/30">
-            <span className="text-gray-300 font-medium">coiner.dev:</span>
-            <span className="font-mono text-emerald-400 font-bold">~0.007 SOL (Gas only)</span>
+            <span className="text-gray-300 font-medium flex items-center gap-1">
+              coiner.dev:
+              {isAdmin && <Crown className="w-3 h-3 text-amber-400" />}
+            </span>
+            <span className="font-mono text-emerald-400 font-bold">
+              {isAdmin ? '0.00 SOL (Gas Only)' : '0.10 SOL (Flat Fee)'}
+            </span>
           </div>
           <div className="flex justify-between items-center bg-gray-950/40 p-2 rounded border border-gray-800 text-gray-400">
-            <span>Smithii / Orion / pump:</span>
+            <span>Smithii / Orion / Others:</span>
             <span className="font-mono text-red-400 line-through">0.20 – 0.50+ SOL</span>
           </div>
         </div>

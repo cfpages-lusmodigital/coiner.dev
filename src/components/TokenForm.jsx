@@ -17,8 +17,10 @@ import {
   Globe,
   Sparkles,
   Coins,
+  Crown,
 } from 'lucide-react';
 import { createSolanaToken, estimateRentCosts } from '@/lib/solana';
+import { useAdminStatus } from '@/lib/clerk';
 
 const TokenForm = ({
   formData,
@@ -32,12 +34,18 @@ const TokenForm = ({
   const { connection } = useConnection();
   const wallet = useWallet();
   const { connected, publicKey } = wallet;
+  const { isAdmin, platformFeeSol, adminRoleReason } = useAdminStatus();
+
+  const isMainnet = network === 'mainnet-beta' || network === 'mainnet';
 
   const [rentCosts, setRentCosts] = useState({
     mintRentSol: '0.00107',
     ataRentSol: '0.00149',
     metadataRentSol: '0.00410',
-    estimatedTotalSol: '0.00676',
+    metaplexProtocolSol: isMainnet ? '0.01000' : '0.00000',
+    networkGasSol: '0.00010',
+    platformFeeSol: Number(platformFeeSol).toFixed(5),
+    estimatedTotalSol: (0.00676 + (isMainnet ? 0.01 : 0) + Number(platformFeeSol)).toFixed(5),
   });
 
   const [prioritySpeed, setPrioritySpeed] = useState('fast'); // normal | fast | turbo
@@ -47,16 +55,16 @@ const TokenForm = ({
     immutable: true,
   });
 
-  // Fetch live rent estimates from connected RPC
+  // Fetch live rent estimates from connected RPC whenever connection, fee, or network changes
   useEffect(() => {
     let isMounted = true;
-    estimateRentCosts(connection).then((costs) => {
+    estimateRentCosts(connection, platformFeeSol, isMainnet).then((costs) => {
       if (isMounted) setRentCosts(costs);
     });
     return () => {
       isMounted = false;
     };
-  }, [connection]);
+  }, [connection, platformFeeSol, isMainnet]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -161,6 +169,7 @@ const TokenForm = ({
           revokeMint: securityOptions.revokeMint,
           immutable: securityOptions.immutable,
           priorityFeeMicroLamports: priorityFeeMap[prioritySpeed] || 250000,
+          platformFeeSol,
         },
         onProgress: (step, msg) => {
           onLaunchProgress(step, msg);
@@ -190,12 +199,24 @@ const TokenForm = ({
               <Sparkles className="w-6 h-6 text-emerald-400" /> Token Generator
             </CardTitle>
             <CardDescription className="text-gray-400 text-sm mt-0.5">
-              Atomic Solana token deployment at raw rent-exemption cost. Zero platform fees.
+              {isAdmin
+                ? 'Admin mode active (admin@alampintar.org). Zero platform fees (gas-only).'
+                : 'Atomic Solana token deployment at flat 0.10 SOL platform fee. Save 80% vs competitors.'}
             </CardDescription>
           </div>
-          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400">
-            <Coins className="w-3.5 h-3.5" /> 100% Raw Gas
-          </span>
+          {isAdmin ? (
+            <span
+              title={adminRoleReason || 'Admin exemption active'}
+              className="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-bold shadow-sm"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-400" />
+              <span>Admin: 0 SOL Fee</span>
+            </span>
+          ) : (
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-gray-900 border border-gray-800 text-gray-300">
+              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.10 SOL Fee
+            </span>
+          )}
         </div>
       </CardHeader>
 
@@ -493,33 +514,52 @@ const TokenForm = ({
         {/* Live Rent Cost Breakdown */}
         <div className="bg-gray-950 rounded-xl p-4 border border-gray-800/90 space-y-2">
           <div className="flex items-center justify-between text-xs pb-2 border-b border-gray-800">
-            <span className="text-gray-400 font-mono uppercase">Cost Breakdown (On-Chain Rent)</span>
+            <span className="text-gray-400 font-mono uppercase tracking-wide">
+              Cost Breakdown (On-Chain Rent & Fee)
+            </span>
             <span className="text-emerald-400 font-mono font-bold">100% Transparent</span>
           </div>
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-gray-400">
-              <span>SPL Mint Account (82 bytes):</span>
+              <span>SPL Mint Account (82 bytes rent):</span>
               <span className="font-mono">{rentCosts.mintRentSol} SOL</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>Creator Token ATA (165 bytes):</span>
+              <span>Creator Token ATA (165 bytes rent):</span>
               <span className="font-mono">{rentCosts.ataRentSol} SOL</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>Metaplex Metadata PDA (~679 bytes):</span>
+              <span>Metaplex Metadata PDA (~679 bytes rent):</span>
               <span className="font-mono">{rentCosts.metadataRentSol} SOL</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>Priority & Network Fee:</span>
-              <span className="font-mono">~0.00010 SOL</span>
+              <span>Metaplex Protocol Creation Fee:</span>
+              <span className="font-mono">
+                {rentCosts.metaplexProtocolSol || (isMainnet ? '0.01000' : '0.00000')} SOL
+                <span className="text-[10px] text-gray-500 ml-1">
+                  {isMainnet ? '(Mainnet)' : '(Devnet)'}
+                </span>
+              </span>
             </div>
-            <div className="flex justify-between text-emerald-400 font-semibold pt-1 border-t border-gray-800/60">
-              <span>coiner.dev Platform Service Fee:</span>
-              <span className="font-mono">0.00000 SOL (FREE)</span>
+            <div className="flex justify-between text-gray-400">
+              <span>Network Gas & Priority Fee Buffer:</span>
+              <span className="font-mono">~{rentCosts.networkGasSol || '0.00010'} SOL</span>
             </div>
-            <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-gray-800">
+            <div className="flex justify-between pt-1 border-t border-gray-800/60 items-center">
+              <span className="font-medium text-gray-200">coiner.dev Service Fee:</span>
+              {isAdmin ? (
+                <span className="font-mono text-emerald-400 font-bold flex items-center gap-1">
+                  <Crown className="w-3 h-3 text-amber-400" /> 0.00000 SOL (Admin Exemption)
+                </span>
+              ) : (
+                <span className="font-mono text-white font-semibold">0.10000 SOL</span>
+              )}
+            </div>
+            <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-gray-800 items-center">
               <span>Total Estimated Network Cost:</span>
-              <span className="font-mono text-emerald-400">{rentCosts.estimatedTotalSol} SOL</span>
+              <span className="font-mono text-emerald-400 text-base font-extrabold">
+                {rentCosts.estimatedTotalSol} SOL
+              </span>
             </div>
           </div>
         </div>
@@ -538,7 +578,9 @@ const TokenForm = ({
               : `Create $${(formData.symbol || formData.ticker || 'COIN').toUpperCase()} (~${rentCosts.estimatedTotalSol} SOL)`}
           </Button>
           <p className="text-[11px] text-center text-gray-500 mt-2">
-            No smart contract lockup. You retain 100% of supply in your own wallet immediately.
+            {isAdmin
+              ? '👑 Admin Mode: 0.00 SOL platform markup applied. Raw Solana rent & gas only.'
+              : 'Flat 0.10 SOL platform fee + Solana on-chain rent. You retain 100% of supply in your own wallet immediately.'}
           </p>
         </div>
       </CardContent>
