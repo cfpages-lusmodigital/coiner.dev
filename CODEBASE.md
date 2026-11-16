@@ -57,6 +57,14 @@ coiner.dev/
 
 ## 3. Core Modules & Methods
 
+### Brand assets and navbar (Codex, 2026-11-16)
+- `public/favicon.svg`: scalable 64x64 coin mark; obsidian face, emerald concentric bevel, `</>` developer glyph, cyan slash and angled mint highlight. Referenced by `index.html` and the navbar so the small mark has one source.
+- `public/logo.svg`: standalone 352x72 horizontal dark-mode logo, same coin geometry plus coiner.dev wordmark and product descriptor; transparent outer canvas, system font fallback for SVG text.
+- `src/components/CoinerLogo.jsx`: `CoinerLogo()` takes no arguments and renders the fixed-size decorative image (`alt=""`) beside readable brand text; no state, effects, animation, external calls or new dependencies.
+- `src/App.jsx`: imports `CoinerLogo`, removes the navbar Rocket icon, and permits header wrapping so narrow screens retain wallet actions. Existing wallet/auth providers and public/admin pricing remain unchanged.
+- Verification: production `pnpm run build`, DESIGN validator, SVG XML parsing and byte equality of built assets; browser checks recorded in the linked OneDrive report. OCR attempted but provider authentication returned HTTP 403 before model review; no passing independent review or deployment is claimed.
+- Pricing recommendations and evidence: `C:/Users/THINKPAD/OneDrive/MD/REPORT/REPORT-COINER-DEV-BRAND-AND-PRICING-2026-11-16.md`. Proposed 0.05 SOL is not implemented.
+
 ### 3.1 `src/lib/clerk.jsx`
 - **`ClerkAuthProvider`**: Wraps the tree with `<ClerkProvider>` when `VITE_CLERK_PUBLISHABLE_KEY` is present, or seamlessly falls back to `<UnifiedAuthContext.Provider>` without throwing missing-provider errors.
 - **`useAdminStatus()`**: Returns `{ isAdmin, platformFeeSol, adminRoleReason, feeLabel, isLoaded, isSignedIn, email }`.

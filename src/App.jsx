@@ -8,8 +8,9 @@ import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 import CreatorPage from './components/CreatorPage';
+import CoinerLogo from './components/CoinerLogo';
 import { ClerkAuthProvider, AdminAuthWidget } from './lib/clerk';
-import { Rocket, ShieldCheck, Coins } from 'lucide-react';
+import { ShieldCheck, Coins } from 'lucide-react';
 
 const App = () => {
   const [network, setNetwork] = useState(WalletAdapterNetwork.Devnet);
@@ -40,20 +41,8 @@ const App = () => {
           <WalletModalProvider>
             <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-emerald-500 selection:text-black">
               {/* Top Navigation */}
-              <header className="py-3.5 px-4 sm:px-8 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-gray-950/85 backdrop-blur-md z-50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-black shadow-lg shadow-emerald-500/20">
-                    <Rocket className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-extrabold tracking-tight">
-                      coiner<span className="text-emerald-400">.dev</span>
-                    </div>
-                    <span className="text-[10px] text-gray-400 font-mono hidden sm:inline-block">
-                      Sovereign Solana Token Creator
-                    </span>
-                  </div>
-                </div>
+              <header className="py-3.5 px-4 sm:px-8 flex flex-wrap gap-3 justify-between items-center border-b border-gray-800/80 sticky top-0 bg-gray-950/85 backdrop-blur-md z-50">
+                <CoinerLogo />
 
                 {/* Right Header Actions */}
                 <div className="flex items-center gap-2.5 sm:gap-3">

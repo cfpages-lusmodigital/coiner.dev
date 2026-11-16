@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="352" height="72" viewBox="0 0 352 72" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">coiner.dev</title>
+  <desc id="desc">Sovereign Solana Token Creator. An emerald minted coin with developer brackets and a cyan slash.</desc>
+  <defs>
+    <linearGradient id="bevel" x1="12" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14F195"/>
+      <stop offset=".48" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#00BCD4"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 4)">
+    <circle cx="32" cy="32" r="30" fill="#030712"/>
+    <circle cx="32" cy="32" r="28" stroke="url(#bevel)" stroke-width="4"/>
+    <circle cx="32" cy="32" r="21" fill="#06251f" stroke="#10b981" stroke-width="1.5"/>
+    <path d="M12 19A25 25 0 0 1 44 10" stroke="#a7f3d0" stroke-width="2" stroke-linecap="round"/>
+    <path d="m23 25-7 7 7 7m18-14 7 7-7 7" stroke="#14F195" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m35 23-6 18" stroke="#00BCD4" stroke-width="4" stroke-linecap="round"/>
+    <path d="m48 50 5-5" stroke="#14F195" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="80" y="41" fill="#f9fafb" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800" letter-spacing="-1.5">coiner<tspan fill="#14F195">.dev</tspan></text>
+  <text x="81" y="61" fill="#9ca3af" font-family="Arial, sans-serif" font-size="11" letter-spacing=".5">Sovereign Solana Token Creator</text>
+</svg>
