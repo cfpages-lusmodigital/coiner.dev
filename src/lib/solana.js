@@ -29,6 +29,15 @@ export const METADATA_PROGRAM_ID = new PublicKey(
   'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
 );
 
+export const U64_MAX = 18446744073709551615n;
+
+/**
+ * Computes UTF-8 byte length of a string (Metaplex uses Rust string byte slices)
+ */
+export function getUtf8ByteLength(str) {
+  return new TextEncoder().encode(str || '').length;
+}
+
 /**
  * Derives Metaplex Metadata PDA for a given mint
  */
@@ -45,15 +54,72 @@ export function getMetadataPDA(mintPublicKey) {
 }
 
 /**
+ * Checks if a transaction signature was confirmed on-chain
+ */
+export async function checkSignatureStatus(connection, signature) {
+  if (!signature) return false;
+  try {
+    const status = await connection.getSignatureStatus(signature, {
+      searchTransactionHistory: true,
+    });
+    if (status && status.value) {
+      if (status.value.err) {
+        return false;
+      }
+      return status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized';
+    }
+    return false;
+  } catch (err) {
+    console.warn('Error checking signature status:', err);
+    return false;
+  }
+}
+
+/**
  * Calculates raw integer token amount from human-readable supply string & decimals
+ * Strictly validates:
+ * 1. decimals must be an exact single digit integer 0..9 (rejects floats like '1.9', negative, hex, etc.)
+ * 2. supply must be a positive decimal number matching /^[0-9]+(\.[0-9]+)?$/ (rejects hex '0x10', exponents '1e6', negatives)
+ * 3. fractional digits count cannot exceed decimals (no silent truncation: '1.234' with 2 decimals throws)
+ * 4. raw supply must be at least 1n ('0.0000001' with 6 decimals throws)
+ * 5. raw supply must not exceed U64_MAX (18446744073709551615n)
  */
 export function calculateRawAmount(supplyStr, decimals) {
-  const cleanSupply = supplyStr.replace(/,/g, '').trim();
+  // 1. Validate decimals strictly
+  const decStr = String(decimals != null ? decimals : '').trim();
+  if (!/^[0-9]$/.test(decStr)) {
+    throw new Error(`Token Decimals must be an integer between 0 and 9 (got "${decimals}").`);
+  }
+  const decInt = Number(decStr);
+
+  // 2. Validate supply string strictly
+  const cleanSupply = String(supplyStr != null ? supplyStr : '').replace(/,/g, '').trim();
+  if (!cleanSupply || !/^[0-9]+(\.[0-9]+)?$/.test(cleanSupply)) {
+    throw new Error(`Invalid token supply: "${supplyStr}". Supply must be a positive decimal number (hex, exponents, and negative numbers are not allowed).`);
+  }
+
   const parts = cleanSupply.split('.');
-  const wholePart = parts[0] || '0';
-  const fracPart = (parts[1] || '').slice(0, decimals).padEnd(decimals, '0');
-  const fullIntStr = wholePart + fracPart;
-  return BigInt(fullIntStr);
+  const wholePart = parts[0].replace(/^0+/, '') || '0';
+  const fracPart = parts[1] || '';
+
+  // 3. Fractional precision check: reject truncation
+  if (fracPart.length > decInt) {
+    throw new Error(`Token supply fractional precision (${fracPart.length} decimals) exceeds token decimals (${decInt}). Truncation is not permitted.`);
+  }
+
+  const paddedFrac = fracPart.padEnd(decInt, '0');
+  const combined = (wholePart === '0' ? paddedFrac.replace(/^0+/, '') || '0' : wholePart + paddedFrac);
+  const raw = BigInt(combined);
+
+  // 4. Raw range checks: 1 <= raw <= U64_MAX
+  if (raw < 1n) {
+    throw new Error(`Calculated raw token supply is 0. Supply must be at least 1 unit (${decInt > 0 ? '0.' + '0'.repeat(decInt - 1) + '1' : '1'}).`);
+  }
+  if (raw > U64_MAX) {
+    throw new Error(`Total raw supply (${raw.toString()}) exceeds Solana u64 limit (${U64_MAX.toString()}). Please reduce supply or decimals.`);
+  }
+
+  return raw;
 }
 
 /**
@@ -84,28 +150,36 @@ export async function estimateRentCosts(
     const totalLamports =
       mintRent + ataRent + metadataRent + metaplexProtocolLamports + networkGasBuffer + feeLamports;
 
+    const onChainRentLamports = mintRent + ataRent + metadataRent + metaplexProtocolLamports + networkGasBuffer;
+
     return {
       mintRentSol: (Number(mintRent) / 1e9).toFixed(5),
       ataRentSol: (Number(ataRent) / 1e9).toFixed(5),
       metadataRentSol: (Number(metadataRent) / 1e9).toFixed(5),
       metaplexProtocolSol: (Number(metaplexProtocolLamports) / 1e9).toFixed(5),
       networkGasSol,
+      onChainRentSol: (Number(onChainRentLamports) / 1e9).toFixed(5),
       platformFeeSol: Number(platformFeeSol).toFixed(5),
       estimatedTotalSol: (Number(totalLamports) / 1e9).toFixed(5),
+      totalLamports: totalLamports.toString(),
     };
   } catch {
     const fee = Number(platformFeeSol);
     const metaProtocol = isMainnet ? 0.01 : 0.0;
     const gasNum = Number(networkGasBuffer) / 1e9;
-    const baseTotal = 0.00666 + metaProtocol + fee + gasNum;
+    const rentBase = 0.00666 + metaProtocol + gasNum;
+    const baseTotal = rentBase + fee;
+    const fallbackLamports = BigInt(Math.round(baseTotal * 1e9));
     return {
       mintRentSol: '0.00107',
       ataRentSol: '0.00149',
       metadataRentSol: '0.00410',
       metaplexProtocolSol: metaProtocol.toFixed(5),
       networkGasSol,
+      onChainRentSol: rentBase.toFixed(5),
       platformFeeSol: fee.toFixed(5),
       estimatedTotalSol: baseTotal.toFixed(5),
+      totalLamports: fallbackLamports.toString(),
     };
   }
 }
@@ -124,7 +198,7 @@ export async function createSolanaToken({
     symbol,
     decimals = 6,
     supply = '1000000000',
-    metadataUri,
+    metadataUri = '',
     revokeFreeze = true,
     revokeMint = true,
     immutable = true,
@@ -135,6 +209,40 @@ export async function createSolanaToken({
 
   if (!wallet || !wallet.publicKey) {
     throw new Error('Please connect your Solana wallet (Phantom, Solflare, etc.).');
+  }
+
+  // Strict Token Config Validation (Metaplex checks Rust string UTF-8 byte lengths)
+  const trimmedName = (name || '').trim();
+  if (!trimmedName) {
+    throw new Error('Token Name is required.');
+  }
+  const nameBytes = getUtf8ByteLength(trimmedName);
+  if (nameBytes > 32) {
+    throw new Error(`Token Name exceeds Metaplex limit of 32 UTF-8 bytes (got ${nameBytes} bytes).`);
+  }
+
+  const trimmedSymbol = (symbol || '').trim().toUpperCase();
+  if (!trimmedSymbol) {
+    throw new Error('Token Symbol is required.');
+  }
+  const symbolBytes = getUtf8ByteLength(trimmedSymbol);
+  if (symbolBytes > 10) {
+    throw new Error(`Token Symbol exceeds Metaplex limit of 10 UTF-8 bytes (got ${symbolBytes} bytes).`);
+  }
+
+  const decStr = String(decimals != null ? decimals : '6').trim();
+  if (!/^[0-9]$/.test(decStr)) {
+    throw new Error(`Token Decimals must be an integer between 0 and 9 (got "${decimals}").`);
+  }
+  const parsedDecimals = Number(decStr);
+
+  const trimmedUri = (metadataUri || '').trim();
+  if (!trimmedUri) {
+    throw new Error('Metadata URI is required to initialize on-chain Metaplex metadata. Please upload metadata to IPFS/Arweave first.');
+  }
+  const uriBytes = getUtf8ByteLength(trimmedUri);
+  if (uriBytes > 200) {
+    throw new Error(`Metadata URI exceeds Metaplex limit of 200 UTF-8 bytes (got ${uriBytes} bytes).`);
   }
 
   const userPublicKey = wallet.publicKey;
@@ -161,10 +269,7 @@ export async function createSolanaToken({
   );
 
   // 4. Calculate total raw supply (BigInt safe with u64 boundary check)
-  const parsedDecimals = parseInt(decimals != null ? String(decimals) : '6', 10);
-  const safeDecimals = Number.isNaN(parsedDecimals) ? 6 : Math.max(0, Math.min(9, parsedDecimals));
-  const rawSupply = calculateRawAmount(String(supply), safeDecimals);
-  const U64_MAX = 18446744073709551615n;
+  const rawSupply = calculateRawAmount(String(supply), parsedDecimals);
   if (rawSupply > U64_MAX) {
     throw new Error(
       'Total raw supply exceeds Solana u64 maximum limit (18,446,744,073,709,551,615). Please reduce supply or decimals.'
@@ -220,18 +325,18 @@ export async function createSolanaToken({
     })
   );
 
-  // 5c. Initialize Mint
+  // 5d. Initialize Mint
   transaction.add(
     createInitializeMintInstruction(
       mintPublicKey,
-      safeDecimals,
+      parsedDecimals,
       userPublicKey,
       userPublicKey, // temporary freeze authority before revoking
       TOKEN_PROGRAM_ID
     )
   );
 
-  // 5d. Create Associated Token Account for Creator
+  // 5e. Create Associated Token Account for Creator
   transaction.add(
     createAssociatedTokenAccountIdempotentInstruction(
       userPublicKey,
@@ -243,7 +348,7 @@ export async function createSolanaToken({
     )
   );
 
-  // 5e. Mint 100% of supply to Creator's ATA
+  // 5f. Mint 100% of supply to Creator's ATA
   transaction.add(
     createMintToInstruction(
       mintPublicKey,
@@ -255,14 +360,14 @@ export async function createSolanaToken({
     )
   );
 
-  // 5f. Metaplex Metadata V3 Instruction
+  // 5g. Metaplex Metadata V3 Instruction
   const metadataSerializer = getCreateMetadataAccountV3InstructionDataSerializer();
   const metadataInstructionData = Buffer.from(
     metadataSerializer.serialize({
       data: {
-        name,
-        symbol,
-        uri: metadataUri,
+        name: trimmedName,
+        symbol: trimmedSymbol,
+        uri: trimmedUri,
         sellerFeeBasisPoints: 0,
         creators: [
           {
@@ -294,7 +399,7 @@ export async function createSolanaToken({
   });
   transaction.add(createMetadataAccountIx);
 
-  // 5g. Revoke Freeze Authority (Mandatory for Raydium liquidity pool creation)
+  // 5h. Revoke Freeze Authority (Mandatory for Raydium liquidity pool creation)
   if (revokeFreeze) {
     transaction.add(
       createSetAuthorityInstruction(
@@ -308,7 +413,7 @@ export async function createSolanaToken({
     );
   }
 
-  // 5h. Revoke Mint Authority (Ensures 100% fixed supply, zero rug risk)
+  // 5i. Revoke Mint Authority (Ensures 100% fixed supply, zero rug risk)
   if (revokeMint) {
     transaction.add(
       createSetAuthorityInstruction(
@@ -332,37 +437,76 @@ export async function createSolanaToken({
   // 7. Partial sign with the Mint Keypair
   transaction.partialSign(mintKeypair);
 
-  // 8. Sign and Send with User Wallet
-  onProgress('broadcasting', 'Broadcasting atomic transaction to Solana network...');
-  const signature = await wallet.sendTransaction(transaction, connection, {
-    signers: [mintKeypair],
-  });
-
-  // 9. Confirm Transaction
-  onProgress('confirming', `Waiting for on-chain confirmation (tx: ${signature.slice(0, 8)}...)...`);
-  const confirmation = await connection.confirmTransaction(
-    {
-      blockhash,
-      lastValidBlockHeight,
-      signature,
-    },
-    'confirmed'
-  );
-
-  if (confirmation.value.err) {
+  // 8. Size Verification (Solana MTU limit is 1232 bytes)
+  const serialized = transaction.serialize({ requireAllSignatures: false });
+  if (serialized.length > 1232) {
     throw new Error(
-      `Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`
+      `Transaction size (${serialized.length} bytes) exceeds Solana MTU packet limit of 1232 bytes. Please shorten token name or metadata URI.`
     );
+  }
+
+  // 9. Sign and Send with User Wallet
+  onProgress('broadcasting', 'Broadcasting atomic transaction to Solana network...');
+  let signature;
+  try {
+    signature = await wallet.sendTransaction(transaction, connection, {
+      signers: [mintKeypair],
+    });
+  } catch (sendErr) {
+    throw sendErr;
+  }
+
+  const launchContext = {
+    signature,
+    mintAddress: mintPublicKey.toBase58(),
+    userAta: userAta.toBase58(),
+    name: trimmedName,
+    symbol: trimmedSymbol,
+  };
+
+  // 10. Confirm Transaction
+  onProgress('confirming', `Waiting for on-chain confirmation (tx: ${signature.slice(0, 8)}...)...`);
+  try {
+    const confirmation = await connection.confirmTransaction(
+      {
+        blockhash,
+        lastValidBlockHeight,
+        signature,
+      },
+      'confirmed'
+    );
+
+    if (confirmation && confirmation.value && confirmation.value.err) {
+      const err = new Error(
+        `Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`
+      );
+      err.signature = signature;
+      err.launchContext = launchContext;
+      throw err;
+    }
+  } catch (confirmErr) {
+    // If confirmation timed out or threw, check on-chain status before declaring failure
+    const isConfirmed = await checkSignatureStatus(connection, signature);
+    if (isConfirmed) {
+      onProgress('success', 'Token successfully created and confirmed on Solana!');
+      return {
+        success: true,
+        ...launchContext,
+      };
+    }
+    // Retain launch context so caller / UI can reconcile instead of creating a second mint
+    const wrappedErr = new Error(
+      `Transaction was broadcast with signature ${signature}, but confirmation timed out or errored: ${confirmErr.message}. Check Solscan before retrying.`
+    );
+    wrappedErr.signature = signature;
+    wrappedErr.launchContext = launchContext;
+    throw wrappedErr;
   }
 
   onProgress('success', 'Token successfully created on Solana!');
 
   return {
     success: true,
-    signature,
-    mintAddress: mintPublicKey.toBase58(),
-    userAta: userAta.toBase58(),
-    name,
-    symbol,
+    ...launchContext,
   };
 }

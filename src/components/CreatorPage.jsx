@@ -5,9 +5,11 @@ import LivePreview from './LivePreview';
 import LaunchModal from './LaunchModal';
 import FAQ from './FAQ';
 import StepGuide from './StepGuide';
-import { Rocket, ShieldCheck, Zap, Coins, CheckCircle2 } from 'lucide-react';
+import { Rocket, ShieldCheck, Zap, Coins, CheckCircle2, Crown } from 'lucide-react';
+import { useAdminStatus } from '@/lib/admin';
 
 const CreatorPage = ({ network = 'devnet' }) => {
+  const { isAdmin } = useAdminStatus();
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -59,7 +61,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
         <div className="text-center mb-10 max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            ⚡ Fast Solana Token Creator • Flat 0.15 SOL • All Revocations Included
+            <span>⚡ Fast Solana Token Creator • Flat 0.15 SOL • All Revocations Included</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">

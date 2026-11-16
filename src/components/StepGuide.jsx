@@ -59,7 +59,7 @@ const StepGuide = () => {
           ))}
         </div>
         <div className="mt-12 text-center p-6 bg-gray-950/70 border border-gray-800 rounded-lg">
-          <h3 className="text-lg font-semibold mb-1 text-white">Flat 0.15 SOL Fee (All-Inclusive)</h3>
+          <h3 className="text-lg font-semibold mb-1 text-white">Flat 0.15 SOL Fee (All-Inclusive Bundle)</h3>
           <p className="text-sm text-gray-400">
             Includes token creation, supply minting, IPFS metadata hosting, and all 3 security revocations. Fast, automated, and 100% non-custodial.
           </p>

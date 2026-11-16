@@ -1,5 +1,5 @@
 // src/components/LivePreview.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -34,12 +34,19 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
   const displayName = name || 'Meme Coin Name';
   const displaySupply = Number(supply || 0).toLocaleString();
 
-  const previewImage =
-    typeof image === 'string'
-      ? image
-      : image instanceof File
-      ? URL.createObjectURL(image)
-      : null;
+  const [previewImage, setPreviewImage] = useState(null);
+
+  useEffect(() => {
+    if (image instanceof File) {
+      const url = URL.createObjectURL(image);
+      setPreviewImage(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (typeof image === 'string') {
+      setPreviewImage(image);
+    } else {
+      setPreviewImage(null);
+    }
+  }, [image]);
 
   return (
     <div className="w-full space-y-6 sticky top-24">
@@ -145,7 +152,9 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
                 ) : (
                   <>
                     <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="text-amber-200">Freeze Authority: <strong>Retained</strong> (+0.05 SOL custom)</span>
+                    <span className="text-amber-200">
+                      Freeze Authority: <strong>Retained</strong> {isAdmin ? '(👑 Admin 0 SOL)' : '(+0.05 SOL custom)'}
+                    </span>
                   </>
                 )}
               </div>
@@ -158,7 +167,9 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
                 ) : (
                   <>
                     <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="text-amber-200">Mint Authority: <strong>Retained</strong> (+0.05 SOL custom)</span>
+                    <span className="text-amber-200">
+                      Mint Authority: <strong>Retained</strong> {isAdmin ? '(👑 Admin 0 SOL)' : '(+0.05 SOL custom)'}
+                    </span>
                   </>
                 )}
               </div>
@@ -171,7 +182,9 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
                 ) : (
                   <>
                     <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="text-amber-200">Metadata: <strong>Mutable</strong> (+0.05 SOL custom)</span>
+                    <span className="text-amber-200">
+                      Metadata: <strong>Mutable</strong> {isAdmin ? '(👑 Admin 0 SOL)' : '(+0.05 SOL custom)'}
+                    </span>
                   </>
                 )}
               </div>

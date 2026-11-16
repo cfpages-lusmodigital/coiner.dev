@@ -1,5 +1,7 @@
 // src/components/LaunchModal.jsx
 import React, { useState } from 'react';
+import { useConnection } from '@solana/wallet-adapter-react';
+import { checkSignatureStatus } from '@/lib/solana';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAdminStatus } from '@/lib/admin';
 
 const STEPS = [
   { id: 'uploading', label: 'Pinning Logo & Metadata to IPFS' },
@@ -79,7 +82,12 @@ const LaunchModal = ({
   network = 'devnet',
   onRetry,
 }) => {
+  const { connection } = useConnection();
+  const { isAdmin } = useAdminStatus();
   const [copied, setCopied] = useState(false);
+  const [isCheckingSig, setIsCheckingSig] = useState(false);
+  const [sigCheckMessage, setSigCheckMessage] = useState('');
+  const [recoveredResult, setRecoveredResult] = useState(null);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -90,8 +98,9 @@ const LaunchModal = ({
   const isDevnet = network === 'devnet';
   const clusterParam = isDevnet ? '?cluster=devnet' : '';
 
-  const mintAddress = result?.mintAddress || '';
-  const signature = result?.signature || '';
+  const activeResult = recoveredResult || result;
+  const mintAddress = activeResult?.mintAddress || '';
+  const signature = activeResult?.signature || '';
 
   const solscanTokenUrl = mintAddress
     ? `https://solscan.io/token/${mintAddress}${clusterParam}`
@@ -103,7 +112,7 @@ const LaunchModal = ({
     ? `https://raydium.io/liquidity/create/?cluster=devnet`
     : `https://raydium.io/liquidity/create/`;
 
-  const tweetText = `Just created $${tokenData?.symbol || 'COIN'} on @Solana with 0.15 SOL flat fee using coiner.dev! 🚀\n\nMint: ${mintAddress}\n\n#Solana #MemeCoin`;
+  const tweetText = `Just created $${tokenData?.symbol || 'COIN'} on @Solana using coiner.dev! 🚀\n\nMint: ${mintAddress}\n\n#Solana #MemeCoin`;
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     tweetText
   )}`;
@@ -114,6 +123,14 @@ const LaunchModal = ({
     status === 'signing' ||
     status === 'broadcasting' ||
     status === 'confirming';
+
+  const rawErrorMessage = typeof error === 'string' ? error : error?.message || '';
+  const broadcastSig =
+    error?.signature ||
+    error?.launchContext?.signature ||
+    rawErrorMessage.match(/[1-9A-HJ-NP-Za-km-z]{64,88}/)?.[0] ||
+    '';
+  const launchContext = error?.launchContext;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !isWorking && setOpen(v)}>
@@ -159,7 +176,7 @@ const LaunchModal = ({
             )}
 
             <DialogFooter className="mt-4 text-center text-xs text-gray-500">
-              Network: <span className="font-semibold text-gray-400 uppercase">{network}</span> • 100% Non-Custodial
+              Network: <span className="font-semibold text-gray-400 uppercase">{network}</span> • 100% Non-Custodial {isAdmin && '• 👑 Admin (0 SOL)'}
             </DialogFooter>
           </div>
         )}
@@ -180,8 +197,74 @@ const LaunchModal = ({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="my-4 p-3 bg-red-950/30 border border-red-900/50 rounded-lg text-xs font-mono text-red-300 break-all max-h-40 overflow-y-auto">
-              {error || 'Unknown error occurred during deployment.'}
+            <div className="my-4 space-y-3">
+              <div className="p-3 bg-red-950/30 border border-red-900/50 rounded-lg text-xs font-mono text-red-300 break-all max-h-36 overflow-y-auto">
+                {rawErrorMessage || 'Unknown error occurred during deployment.'}
+              </div>
+
+              {broadcastSig && (
+                <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-lg text-xs space-y-2 text-amber-200">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-300">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    Transaction Broadcast Context Retained
+                  </div>
+                  <p className="text-[11px] text-gray-300 leading-normal">
+                    The transaction was broadcast with signature:{' '}
+                    <span className="font-mono text-amber-300 break-all">{broadcastSig}</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 leading-normal">
+                    Do not submit another transaction immediately to avoid duplicate token creation and fees. Verify confirmation first:
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500/50 text-amber-300 hover:bg-amber-950 text-xs h-7"
+                      asChild
+                    >
+                      <a href={`https://solscan.io/tx/${broadcastSig}${clusterParam}`} target="_blank" rel="noopener noreferrer">
+                        View on Solscan <ExternalLink className="w-3 h-3 ml-1" />
+                      </a>
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={isCheckingSig}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-7 font-bold"
+                      onClick={async () => {
+                        setIsCheckingSig(true);
+                        setSigCheckMessage('Checking on-chain confirmation status...');
+                        try {
+                          const confirmed = await checkSignatureStatus(connection, broadcastSig);
+                          if (confirmed) {
+                            setSigCheckMessage('Confirmed on-chain! Loading token details...');
+                            if (launchContext) {
+                              setRecoveredResult(launchContext);
+                            } else {
+                              setRecoveredResult({
+                                signature: broadcastSig,
+                                mintAddress: tokenData?.mintAddress || '',
+                                name: tokenData?.name,
+                                symbol: tokenData?.symbol,
+                              });
+                            }
+                          } else {
+                            setSigCheckMessage('Transaction not yet confirmed on RPC. Please verify on Solscan before retrying.');
+                          }
+                        } catch (checkErr) {
+                          setSigCheckMessage('RPC check error: ' + checkErr.message);
+                        } finally {
+                          setIsCheckingSig(false);
+                        }
+                      }}
+                    >
+                      {isCheckingSig ? 'Checking...' : 'Check Confirmation Status'}
+                    </Button>
+                  </div>
+                  {sigCheckMessage && (
+                    <p className="text-[11px] font-mono text-emerald-300 pt-1">{sigCheckMessage}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <DialogFooter className="flex gap-2 sm:justify-between">
@@ -204,7 +287,7 @@ const LaunchModal = ({
           </div>
         )}
 
-        {status === 'success' && (
+        {(status === 'success' || Boolean(recoveredResult)) && (
           <div className="py-2">
             <DialogHeader className="text-center">
               <div className="flex justify-center mb-3">

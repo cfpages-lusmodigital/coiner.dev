@@ -7,11 +7,15 @@
   "engines": {
     "node": ">=20.19.4"
   },
+  "bin": {
+    "coiner": "./bin/coiner-cli.js"
+  },
   "scripts": {
     "dev": "vite",
     "prebuild": "rimraf dist",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cli": "node bin/coiner-cli.js"
   },
   "dependencies": {
     "@metaplex-foundation/mpl-token-metadata": "^3.0.0",

@@ -1,5 +1,6 @@
 // src/lib/admin.jsx
 import { useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
 import React from 'react';
 import { Crown } from 'lucide-react';
 
@@ -16,11 +17,33 @@ export const ADMIN_WALLETS = (() => {
     ...(import.meta.env.VITE_ADMIN_WALLETS ? import.meta.env.VITE_ADMIN_WALLETS.split(',') : []),
     DEFAULT_ADMIN_WALLET,
   ];
-  const cleaned = rawList
-    .map((w) => (typeof w === 'string' ? w.trim().toLowerCase() : ''))
-    .filter((w) => Boolean(w) && w.length >= 32);
-  return Array.from(new Set(cleaned));
+  const validAddresses = [];
+  for (const raw of rawList) {
+    if (!raw || typeof raw !== 'string') continue;
+    try {
+      const canonical = new PublicKey(raw.trim()).toBase58();
+      if (!validAddresses.includes(canonical)) {
+        validAddresses.push(canonical);
+      }
+    } catch {
+      // Ignore invalid public key formats in env
+    }
+  }
+  return validAddresses;
 })();
+
+/**
+ * Checks if a given address string is a valid canonical admin wallet (case-sensitive)
+ */
+export function isAdminAddress(address) {
+  if (!address || typeof address !== 'string') return false;
+  try {
+    const canonical = new PublicKey(address.trim()).toBase58();
+    return ADMIN_WALLETS.includes(canonical);
+  } catch {
+    return false;
+  }
+}
 
 export const BASE_PUBLIC_FEE_SOL = 0.15;
 export const CUSTOMIZATION_SURCHARGE_SOL = 0.05;
@@ -46,8 +69,7 @@ export function calculatePlatformFee({ isAdmin, revokeFreeze, revokeMint, immuta
 export function useAdminStatus() {
   const { publicKey, connected } = useWallet();
   const address = publicKey ? publicKey.toBase58() : '';
-  const isAdmin =
-    connected && Boolean(address) && ADMIN_WALLETS.includes(address.toLowerCase());
+  const isAdmin = connected && Boolean(address) && isAdminAddress(address);
 
   return {
     isAdmin,
