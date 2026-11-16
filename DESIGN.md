@@ -13,13 +13,13 @@
 
 ### 1.1 Product
 
-`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creation studio that enables crypto founders, degens, and community builders to deploy fully compliant, RugCheck A-Grade tokens in a single atomic on-chain transaction. It eliminates predatory third-party platform markups through a transparent Dual-Tier Fee Model: public creators pay a flat 0.15 SOL bundled service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning included 100% free with zero upsell (while non-standard customizations to retain any authority incur +0.05 SOL each), and the platform owner receives a 0.00 SOL fee exemption when authenticated as `admin@alampintar.org` via Clerk or when connecting an authorized admin Solana wallet.
+`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creation studio that enables crypto founders, degens, and community builders to deploy fully compliant, RugCheck A-Grade tokens in a single atomic on-chain transaction. It eliminates predatory third-party platform markups through a transparent Dual-Tier Fee Model: public creators pay a flat 0.15 SOL bundled service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning included 100% free with zero upsell (while non-standard customizations to retain any authority incur +0.05 SOL each), and the platform owner receives a 0.00 SOL fee exemption when connecting an authorized admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
 
 ### 1.2 Primary users
 
 | User | Job to be done | Context | Success signal |
 |---|---|---|---|
-| Platform Owner (Syamsul) | Launch experimental degen and portfolio coins with zero platform markups and zero friction. | Desktop ThinkPad, Phantom wallet, Clerk session. | Token deployed at raw gas cost (~0.0168 SOL) with 100% supply in creator ATA. |
+| Platform Owner (Syamsul) | Launch experimental degen and portfolio coins with zero platform markups and zero friction. | Desktop ThinkPad, Phantom wallet, admin wallet allowlist. | Token deployed at raw gas cost (~0.0168 SOL) with 100% supply in creator ATA. |
 | Meme Coin Degen | Deploy a viral meme token in under 15 seconds to seize social sentiment or trending hashtags. | Desktop or mobile Web3 browser (Phantom/Solflare app), time-sensitive trading environment. | A-grade RugCheck score, instant Raydium CPMM link, zero smart contract lockup. |
 | Community Web3 Founder | Launch a utility or governance token with fixed supply and permanent authority revocations. | Desktop browser, formal treasury management, strict security requirements. | Clean Metaplex V3 metadata, immutable supply verified on Solscan, zero rug risk. |
 
@@ -39,7 +39,7 @@
 | Stage | User goal | Entry point | Pages or screens | Exit and next stage |
 |---|---|---|---|---|
 | Discover & Inspect | Understand pricing transparency, verify zero platform markup or 0.15 SOL flat bundled fee, and review security standards. | Direct URL (`https://coiner.dev`) or Twitter/Telegram link. | Token Creator Studio | Configure & Preview |
-| Identity & Access | Authenticate as administrator via Clerk (`admin@alampintar.org`) or connect admin Solana wallet to activate 0.00 SOL platform fee exemption. | Connect admin Solana wallet or navigate with `?admin`. | Admin Auth Overlay | Configure & Preview |
+| Identity & Access | Connect admin Solana wallet to activate automatic 0.00 SOL platform fee exemption. | Connect admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`). | Admin Status Badge | Configure & Preview |
 | Configure & Preview | Define token parameters (name, symbol, supply, decimals, logo) and inspect real-time DEX card simulation. | Connected wallet on homepage. | Token Creator Studio | Authorize & Pay |
 | Authorize & Pay | Sign the single atomic transaction in Phantom/Solflare and settle platform fee (0.15 SOL Public Bundled / 0.00 SOL Admin). | "Create Token" CTA click. | Launch & Settlement Modal | Verify & Graduate |
 | Verify & Graduate | Copy mint address, verify metadata on Solscan, audit safety on RugCheck, and create Raydium CPMM pool. | On-chain confirmation. | Launch & Settlement Modal | Raydium pool creation or Solscan explorer |
@@ -56,7 +56,7 @@ flowchart LR
 
 ### 2.3 Alternate and edge-case paths
 
-- **Admin Authentication Flow:** Platform owner connects the admin Solana wallet (or navigates with `?admin` to sign in via Clerk modal as `admin@alampintar.org`), instantly toggling the studio into `👑 Admin Mode` with 0.00 SOL platform fee.
+- **Admin Authentication Flow:** Platform owner connects their allowlisted admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`), instantly toggling the studio into `👑 Admin Mode` with 0.00 SOL platform fee.
 - **Devnet Sandbox Testing:** User toggles the top-right network switch to "Devnet" to test deployment risk-free with faucet SOL before committing mainnet capital.
 - **RPC Rate-Limit Recovery:** If Solana public RPC nodes encounter heavy network congestion, the client falls back to cached rent values and informs the user to switch priority fees to Fast/Turbo.
 
@@ -68,7 +68,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | P-01 | Token Creator Studio | `src/components/CreatorPage.jsx` | Configure & Preview | Launch Token | Live |
 | P-02 | Launch & Settlement Modal | `src/components/LaunchModal.jsx` | Authorize & Pay | Confirm Transaction & Copy Address | Live |
-| P-03 | Admin Auth Overlay | `src/lib/clerk.jsx` | Identity & Access | Sign In via Clerk / Connect Wallet | Live |
+| P-03 | Admin Status Badge | `src/lib/admin.jsx` | Identity & Access | Connect Admin Wallet | Live |
 | P-04 | Knowledge & Safety Guide | `src/components/StepGuide.jsx` & `FAQ.jsx` | Discover & Inspect | Review Raydium Guide & FAQs | Live |
 
 ---
@@ -261,52 +261,51 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 
 ---
 
-### Page: Admin Auth Overlay
+### Page: Admin Status Badge
 
 #### Purpose and Journey
-Enables the platform owner to authenticate via Clerk (`admin@alampintar.org`) or verify their admin Solana wallet, instantly activating the 0.00 SOL platform fee exemption across the application.
+Enables the platform owner to verify their admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`), instantly activating the 0.00 SOL platform fee exemption across the application with zero third-party authentication overhead.
 
 #### Layout and Hierarchy
-Compact header component embedded directly beside the network switcher and wallet button. When signed out, stays unobtrusive and hidden from public visitors; when accessed via admin mode or signed in as admin, displays a glowing emerald badge with gold Crown icon and user profile dropdown.
+Compact header component embedded directly beside the network switcher and wallet button. When signed out or when a standard public user connects, remains hidden to keep the customer-facing interface clean; when the authorized admin wallet connects, displays a glowing emerald badge with gold Crown icon and "0 SOL Fee" pill.
 
 #### Components and States
-- Signed Out: Hidden by default for public visitors, or discreet Sign In trigger if navigated with admin mode.
-- Signed In (Admin): Crown icon + "Admin" badge + "0 SOL Fee" pill + Clerk UserButton.
-- Signed In (Public User): User icon + username pill + Clerk UserButton.
-- Fallback State: If `VITE_CLERK_PUBLISHABLE_KEY` is omitted, cleanly evaluates admin status via connected Solana wallet without throwing errors.
+- Public User / Disconnected: Hidden completely to preserve clean, distraction-free degen UX.
+- Admin Connected: Crown icon + "Admin" badge + "0 SOL Fee" pill.
+- Allowlist Extension: Parses `VITE_ADMIN_WALLETS` dynamically for future admin addresses.
 
 #### Accessibility
-Buttons feature explicit `type="button"` attributes. Modal sign-in dialog provides full screen-reader accessibility managed by Clerk's WCAG-compliant iframe modal.
+Semantic badge markup with clear accessible tooltip (`title="Admin Wallet Recognized • 0.00 SOL Platform Fee"`).
 
 #### Responsive Behavior
-On small screens (`< 640px`), the text label "Admin" is hidden, preserving the gold Crown icon to conserve header real estate for wallet buttons.
+On small screens (`< 640px`), the text label "Admin" is hidden via `hidden sm:inline`, preserving the gold Crown icon and "0 SOL Fee" indicator to conserve header real estate for the wallet button.
 
 #### Motion and Feedback
-Hover states feature a 150ms border and text color transition (`hover:border-gray-700 hover:text-white`).
+Subtle fade-in animation (`animate-in fade-in duration-200`) when the admin wallet connects.
 
 #### Content and Forms
-Concise microcopy: "0 SOL Fee", with hover tooltips clarifying role verification mechanism.
+Concise microcopy: "Admin • 0 SOL Fee", with hover tooltip clarifying verification.
 
 #### Principle Adherence
 
 | Principle | Application | Evidence |
 |---|---|---|
-| Fitts's Law | Admin widget is placed in the top-right header adjacent to the wallet button, clustering all identity actions. | Top navigation flex container in [App.jsx#L53](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L53) |
-| Visual Hierarchy | Subtle gray-900 border recedes behind the primary green Wallet Multi Button when signed out. | Muted background styling in [clerk.jsx#L172](file:///C:/Users/THINKPAD/coiner.dev/src/lib/clerk.jsx#L172) |
-| Von Restorff Effect | Gold Crown icon (`#f59e0b`) distinctly isolates the owner's privileged admin status. | Crown component color token in [clerk.jsx#L155](file:///C:/Users/THINKPAD/coiner.dev/src/lib/clerk.jsx#L155) |
-| Object Constancy | UserButton and Admin badge remain pinned at fixed coordinates in the top navigation bar. | Sticky header placement in [App.jsx#L36](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L36) |
-| Snapping | Header items align in a clean flex container with `gap-2.5 sm:gap-3`. | Header flexbox layout in [App.jsx#L53](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L53) |
-| Motion Blur | N/A: auth state changes trigger static badge replacement without motion. | Instant conditional component switch in React render |
-| Natural Mapping | Profile button opens user management dropdown directly below the avatar anchor. | Clerk UserButton default anchor geometry |
-| Tabular Figures | N/A: admin auth widget contains no multi-column numeric tabular data. | Exclusively textual badges and icons |
-| Animate Only the Delta | Only the auth widget re-renders when Clerk session resolves, leaving surrounding navigation unchanged. | React Context subscriber isolation in [clerk.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/clerk.jsx) |
-| Inertia | Clerk dropdown menu opens with smooth vertical deceleration curve. | Clerk UI menu transition physics |
-| Multimodal Feedback | Signing in immediately updates the header badge AND toggles the generator card's fee breakdown to 0.00 SOL. | Dual visual state feedback in header and generator card |
-| Visual Cues | Hovering over the Admin badge reveals a native tooltip detailing the verification source (`Clerk Verified` or `Admin Wallet`). | Native HTML `title` attribute on container in [clerk.jsx#L152](file:///C:/Users/THINKPAD/coiner.dev/src/lib/clerk.jsx#L152) |
-| Skeuomorphism | Crown badge utilizes the universal royal crown symbol denoting administrative sovereignty. | Lucide Crown icon representing authority |
+| Fitts's Law | Admin badge is placed in top navigation flex container adjacent to the wallet button, clustering identity status with connection triggers. | Top navigation flex container in [App.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48) |
+| Visual Hierarchy | Subtle emerald border and muted backdrop (`bg-emerald-950/90 border-emerald-500/40`) sits quietly beside the primary green Wallet Multi Button. | Muted badge styling in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
+| Von Restorff Effect | Gold Crown icon (`#f59e0b`) distinctly isolates the owner's privileged admin status. | Crown component color token in [admin.jsx#L71](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L71) |
+| Object Constancy | Admin badge remains pinned at fixed coordinates in the top navigation bar. | Sticky header placement in [App.jsx#L44](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L44) |
+| Snapping | Header items align in a clean flex container with `gap-2.5 sm:gap-3`. | Header flexbox layout in [App.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48) |
+| Motion Blur | N/A: badge mount uses instant hardware-accelerated CSS opacity fade without motion blur. | CSS fade-in duration class in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
+| Natural Mapping | Status badge sits immediately adjacent to the connected wallet trigger that grants it. | Visual adjacency to WalletMultiButton in [App.jsx#L48-L79](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48-L79) |
+| Tabular Figures | Monospace digits for "0 SOL Fee" indicator in font-mono span. | Monospace font styling in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
+| Animate Only the Delta | Only the badge element renders into the DOM when admin wallet is detected, leaving surrounding navbar untouched. | React conditional render in [admin.jsx#L65](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L65) |
+| Inertia | CSS opacity transition smoothly resolves within 200ms (`animate-in fade-in duration-200`) without layout shift. | Tailwind animate-in transition in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
+| Multimodal Feedback | Connecting admin wallet immediately renders the header badge AND toggles the creator form's platform fee to 0.00 SOL. | Dual visual state feedback in header and generator card |
+| Visual Cues | Hovering over the Admin badge reveals a native tooltip (`title="Admin Wallet Recognized • 0.00 SOL Platform Fee"`). | Native HTML `title` attribute on container in [admin.jsx#L68](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L68) |
+| Skeuomorphism | Crown badge utilizes the universal royal crown symbol denoting administrative sovereignty. | Lucide Crown icon representing authority in [admin.jsx#L71](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L71) |
 
 #### Verification
-- Verified Clerk modal rendering and graceful fallback when publishable keys are unset.
+- Verified native wallet allowlist matching with `DEFAULT_ADMIN_WALLET = '2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV'`.
 - Verified automatic 0.00 SOL fee exemption trigger in `useAdminStatus()`.
 
 ---

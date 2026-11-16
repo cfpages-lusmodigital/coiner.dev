@@ -10,10 +10,9 @@ import {
   Flame,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   Crown,
 } from 'lucide-react';
-import { useAdminStatus } from '@/lib/clerk';
+import { useAdminStatus } from '@/lib/admin';
 
 const LivePreview = ({ formData, advancedOptions = {} }) => {
   const { isAdmin } = useAdminStatus();

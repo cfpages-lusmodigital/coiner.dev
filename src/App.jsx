@@ -9,7 +9,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 import CreatorPage from './components/CreatorPage';
 import CoinerLogo from './components/CoinerLogo';
-import { ClerkAuthProvider, AdminAuthWidget } from './lib/clerk';
+import { AdminStatusBadge } from './lib/admin';
 import { ShieldCheck, Coins } from 'lucide-react';
 
 const App = () => {
@@ -35,19 +35,18 @@ const App = () => {
   );
 
   return (
-    <ClerkAuthProvider>
-      <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={wallets} autoConnect>
-          <WalletModalProvider>
-            <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-emerald-500 selection:text-black">
-              {/* Top Navigation */}
-              <header className="py-3.5 px-4 sm:px-8 flex flex-wrap gap-3 justify-between items-center border-b border-gray-800/80 sticky top-0 bg-gray-950/85 backdrop-blur-md z-50">
-                <CoinerLogo />
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-emerald-500 selection:text-black">
+            {/* Top Navigation */}
+            <header className="py-3.5 px-4 sm:px-8 flex flex-wrap gap-3 justify-between items-center border-b border-gray-800/80 sticky top-0 bg-gray-950/85 backdrop-blur-md z-50">
+              <CoinerLogo />
 
-                {/* Right Header Actions */}
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  {/* Admin Auth Widget (Clerk / Admin Exemption Badge) */}
-                  <AdminAuthWidget />
+              {/* Right Header Actions */}
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                {/* Subtle Admin Status Badge */}
+                <AdminStatusBadge />
 
                   {/* Network Switcher */}
                   <div className="flex items-center p-0.5 rounded-lg bg-gray-900 border border-gray-800 text-xs font-mono">
@@ -116,7 +115,6 @@ const App = () => {
           </WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
-    </ClerkAuthProvider>
   );
 };
 

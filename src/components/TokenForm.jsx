@@ -12,9 +12,7 @@ import {
   Upload,
   ShieldCheck,
   Zap,
-  Info,
   CheckCircle2,
-  Lock,
   Globe,
   Sparkles,
   Coins,
@@ -22,7 +20,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { createSolanaToken, estimateRentCosts } from '@/lib/solana';
-import { useAdminStatus, calculatePlatformFee, BASE_PUBLIC_FEE_SOL, CUSTOMIZATION_SURCHARGE_SOL } from '@/lib/clerk';
+import { useAdminStatus, calculatePlatformFee } from '@/lib/admin';
 
 const PRIORITY_FEE_MAP = {
   normal: 50000,   // ~0.0000125 SOL at 250k CU
@@ -138,13 +136,6 @@ const TokenForm = ({
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleImageFile(e.dataTransfer.files[0]);
     }
-  };
-
-  // Priority fee mapping in microLamports
-  const priorityFeeMap = {
-    normal: 50000,   // ~0.00001 SOL
-    fast: 250000,    // ~0.00005 SOL
-    turbo: 1000000,  // ~0.00020 SOL
   };
 
   const isFormValid =

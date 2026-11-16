@@ -13,5 +13,5 @@
 
 ## 3. Separation of Public vs. Owner Boundaries
 - Public copy is for public customers.
-- Owner perks (0.00 SOL admin exemption, `admin@alampintar.org`, treasury address) are private and must never appear in hero copy, public FAQs, or landing text.
-- If admin is signed in, the UI adapts quietly via the header badge and zero-fee button without altering the public pitch.
+- Owner perks (0.00 SOL admin exemption via native wallet recognition `2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`, treasury address) are private and must never appear in hero copy, public FAQs, or landing text. Zero third-party auth (no Clerk, no email sign-in).
+- When the admin wallet connects, the UI adapts quietly via the header badge and zero-fee button without altering the public pitch.

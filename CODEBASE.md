@@ -10,7 +10,7 @@
 
 ## 1. Architecture Overview
 
-`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creator designed to eliminate predatory third-party platform markups. It implements an atomic client-side Solana transaction engine coupled with a stateless Cloudflare Pages Functions IPFS metadata proxy and a Clerk-powered Dual-Tier Fee Model.
+`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creator designed to eliminate predatory third-party platform markups. It implements an atomic client-side Solana transaction engine coupled with a stateless Cloudflare Pages Functions IPFS metadata proxy and a Native Solana Wallet Allowlist Dual-Tier Fee Model.
 
 ### Key Architectural Invariants
 1. **100% Non-Custodial:** User private keys are never requested, handled, or stored. The transaction fee payer, account-rent payer, supply recipient, and initial mint authority are strictly the user's connected wallet (Phantom, Solflare, etc.).
@@ -18,7 +18,7 @@
 3. **Stateless IPFS Proxy:** Third-party pinning credentials (`PINATA_API_KEY`, `PINATA_SECRET_API_KEY`, `PINATA_JWT`) are kept strictly within Cloudflare Pages Functions serverless environment (`context.env`). They are never baked into public client JavaScript bundles.
 4. **Dual-Tier Fee & Bundling Model:**
    - **Public Users:** Pay a flat **0.15 SOL** platform service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning bundled 100% free with zero upsell. Customization to retain any authority (non-standard unbundled configuration) incurs a **+0.05 SOL** surcharge per kept authority. Fees transfer atomically on-chain directly to `TREASURY_WALLET` (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
-   - **Administrator:** Automatically receives a **0.00 SOL** platform fee exemption (gas-only deployment ~0.0168 SOL) when authenticated as `admin@alampintar.org` via Clerk or when connecting the authorized admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
+   - **Administrator:** Automatically receives a **0.00 SOL** platform fee exemption (gas-only deployment ~0.0168 SOL) when connecting an authorized admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV` or addresses configured in `VITE_ADMIN_WALLETS`). Zero third-party auth vendors (no Clerk, no email sign-in).
 
 ---
 
@@ -39,10 +39,10 @@ coiner.dev/
 │   │   ├── TokenForm.jsx        # Token configuration form, priority selector, clean cost summary card
 │   │   └── ui/                  # Radix UI + Tailwind component library
 │   ├── lib/
-│   │   ├── clerk.jsx            # Unified Clerk authentication & admin exemption layer
+│   │   ├── admin.jsx            # Native Solana wallet allowlist admin recognition & fee logic
 │   │   ├── solana.js            # Client-side atomic transaction builder & BigInt arithmetic
 │   │   └── utils.js             # Utility functions (cn class merging)
-│   ├── App.jsx                  # Top-level App component, ClerkAuthProvider & Wallet Providers
+│   ├── App.jsx                  # Top-level App component, AdminStatusBadge & Wallet Providers
 │   └── main.jsx                 # Application entrypoint with Buffer polyfill
 ├── public/                      # Static assets & favicon
 ├── dist/                        # Production build output
@@ -65,13 +65,12 @@ coiner.dev/
 - Verification: production `pnpm run build`, DESIGN validator, SVG XML parsing and byte equality of built assets; browser checks recorded in the linked OneDrive report. OCR attempted but provider authentication returned HTTP 403 before model review; no passing independent review or deployment is claimed.
 - Pricing recommendations and evidence: `C:/Users/THINKPAD/OneDrive/MD/REPORT/REPORT-COINER-DEV-BRAND-AND-PRICING-2026-11-16.md`. Proposed 0.05 SOL is not implemented.
 
-### 3.1 `src/lib/clerk.jsx`
-- **`ClerkAuthProvider`**: Wraps the tree with `<ClerkProvider>` when `VITE_CLERK_PUBLISHABLE_KEY` is present, or seamlessly falls back to `<UnifiedAuthContext.Provider>` without throwing missing-provider errors.
-- **`useAdminStatus()`**: Returns `{ isAdmin, platformFeeSol, adminRoleReason, feeLabel, isLoaded, isSignedIn, email }`.
-  - `isAdmin = (isEmailAdmin || isWalletAdmin)`.
-  - `isEmailAdmin = isSignedIn && (email === 'admin@alampintar.org' || role === 'admin')`.
-  - `isWalletAdmin = connectedAddress === VITE_ADMIN_WALLET_ADDRESS`.
-- **`AdminAuthWidget`**: Header component showing `<SignInButton>` when signed out, `<UserButton>` when signed in, and a `👑 Admin Mode (0 SOL Fee)` badge when admin status is verified.
+### 3.1 `src/lib/admin.jsx`
+- **`DEFAULT_ADMIN_WALLET`**: Canonical fallback admin address (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
+- **`ADMIN_WALLETS`**: Allowlist array aggregating `VITE_ADMIN_WALLET_ADDRESS`, comma-separated `VITE_ADMIN_WALLETS`, and `DEFAULT_ADMIN_WALLET` with lowercase deduplication.
+- **`calculatePlatformFee({ isAdmin, revokeFreeze, revokeMint, immutable })`**: Deterministically returns `0.00 SOL` for recognized admin wallets, or `0.15 SOL` flat base for public users (+`0.05 SOL` per retained/non-revoked authority).
+- **`useAdminStatus()`**: Returns `{ isAdmin, platformFeeSol, adminRoleReason, feeLabel, address }` dynamically evaluated from `@solana/wallet-adapter-react`'s `useWallet().publicKey`. Zero external authentication network requests.
+- **`AdminStatusBadge`**: Subtle header pill displaying `👑 Admin • 0 SOL Fee` when an allowlisted admin wallet is connected. Hidden for normal public users.
 
 ### 3.2 `src/lib/solana.js`
 - **`calculateRawAmount(supplyStr, decimals)`**: Converts human-readable token supply strings (e.g., `"1,000,000,000"`) into raw BigInt lamport amounts with exact zero-padding. Enforces `u64::MAX` boundary checks.
@@ -107,8 +106,8 @@ coiner.dev/
 | Variable | Scope | Purpose |
 |---|---|---|
 | `VITE_TREASURY_WALLET` | Public Client (Build-time) | Solana treasury address receiving public 0.15 SOL fees (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`) |
-| `VITE_ADMIN_WALLET_ADDRESS` | Public Client (Build-time) | Solana wallet address receiving 0.00 SOL admin exemption (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`) |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Public Client (Build-time) | Clerk publishable key for user authentication |
+| `VITE_ADMIN_WALLET_ADDRESS` | Public Client (Build-time) | Primary admin Solana wallet address (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`) |
+| `VITE_ADMIN_WALLETS` | Public Client (Build-time) | Optional comma-separated list of additional admin Solana wallet addresses |
 | `VITE_SOLANA_RPC_MAINNET` | Public Client (Build-time) | Dedicated Solana Mainnet RPC endpoint |
 | `VITE_SOLANA_RPC_DEVNET` | Public Client (Build-time) | Dedicated Solana Devnet RPC endpoint |
 | `PINATA_API_KEY` / `VITE_PINATA_API_KEY` | Pages Functions (Runtime) | Pinata IPFS API Key |

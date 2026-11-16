@@ -37,7 +37,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 | **DexLab** (`dexlab.space`) | 0.15 SOL | Included at launch | **0.17 SOL** (with ~0.02 SOL rent) | Vesting schedules, DEX market creator | Complex developer UI; slow metadata propagation; dated visual design. |
 | **SlerfTools** (`slerf.tools`) | ~0.10 SOL | Included at launch | **~0.12 SOL** | Multi-sender (0.002 SOL/addr), market creator, LP locker | Bare-bones interface; lacks real-time live preview or RugCheck simulations. |
 | **Pump.fun** (`pump.fun`) | 0.00 SOL upfront | Built-in bonding curve | **0.00 SOL upfront**, but 1% trading fee + 2 SOL Raydium migration fee | Instant bonding curve, King of the Hill gamification, livestreaming, auto-graduation | Not a plain SPL creator; forces users into proprietary bonding curve with high slip and platform control. |
-| **coiner.dev** (Our Platform) | **0.00 SOL** (Admin)<br/>**0.15 SOL** (Public Bundled) | **Included Free** (Revoke Freeze, Revoke Mint, Immutable); +0.05 SOL if customized | **~0.0168 SOL** (Admin)<br/>**~0.1668 SOL** (Public) | Live DEX preview, RugCheck predictor, 1-click Raydium CPMM link, Clerk admin sync | **Best-in-class bundled pricing; zero-fee admin mode; 100% non-custodial; no upsell traps.** |
+| **coiner.dev** (Our Platform) | **0.00 SOL** (Admin)<br/>**0.15 SOL** (Public Bundled) | **Included Free** (Revoke Freeze, Revoke Mint, Immutable); +0.05 SOL if customized | **~0.0168 SOL** (Admin)<br/>**~0.1668 SOL** (Public) | Live DEX preview, RugCheck predictor, 1-click Raydium CPMM link, Native wallet admin recognition | **Best-in-class bundled pricing; zero-fee admin mode; 100% non-custodial; no upsell traps.** |
 
 ---
 
@@ -55,7 +55,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 - `✅ Completed` **Non-Custodial Wallet Integration:** Full support for Solana Wallet-Adapter (Phantom, Solflare, etc.) with network toggle (Devnet vs Mainnet-beta).
 - `✅ Completed` **Stateless IPFS Metadata Proxy (`functions/api/upload-metadata.js`):** Serverless Cloudflare Pages Function uploading token images and Metaplex JSON metadata to Pinata IPFS without baking secrets into client bundles.
 - `✅ Completed` **Atomic Transaction Engine (`src/lib/solana.js`):** Client-side assembly of single atomic transaction featuring compute budget (250k CU), rent exemption, mint initialization, ATA creation, 100% supply minting, Metaplex V3 metadata registration, authority revocations, and platform fee transfer.
-- `✅ Completed` **Dual-Tier Fee Model (`src/lib/clerk.jsx`):** Clerk authentication (`admin@alampintar.org`) + Solana admin wallet bypass (`VITE_ADMIN_WALLET_ADDRESS`). Public creators charged 0.10 SOL; admin receives 0.00 SOL exemption.
+- `✅ Completed` **Dual-Tier Fee Model (`src/lib/admin.jsx`):** Native Solana wallet allowlist recognition (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV` and `VITE_ADMIN_WALLETS`). Public creators charged 0.15 SOL flat bundled fee; recognized admin receives 0.00 SOL exemption.
 - `✅ Completed` **Live DEX Preview & Itemized Cost Breakdown:** Real-time token avatar and ticker card with predicted RugCheck rating and transparent on-chain rent itemization.
 - `✅ Completed` **Multi-Step Launch Modal:** Animated step indicators, error boundaries, 1-click copy for Mint address, Solscan explorer links, RugCheck audit links, and Raydium pool shortcuts.
 - `✅ Completed` **Domain & Edge Deployment:** Automated CI/CD from `cfpages-lusmodigital/coiner.dev` to `https://coiner.dev`.
