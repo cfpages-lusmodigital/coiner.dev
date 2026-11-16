@@ -1,6 +1,6 @@
 // src/lib/clerk.jsx
 // Sovereign Authentication & Admin Exemption Layer for coiner.dev
-// Enforces Dual-Tier Fee Model: 0.10 SOL for Public Users, 0.00 SOL for Admin (admin@alampintar.org / Admin Wallet)
+// Enforces Dual-Tier Fee Model: 0.15 SOL Flat Fee (Bundled) for Public Users, 0.00 SOL for Admin (admin@alampintar.org / Admin Wallet)
 
 import React, { createContext, useContext, useMemo } from 'react';
 import {
@@ -14,7 +14,22 @@ import {
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Crown, LogIn, User, ShieldCheck } from 'lucide-react';
 
-const ADMIN_EMAIL = 'admin@alampintar.org';
+export const ADMIN_EMAIL = 'admin@alampintar.org';
+export const BASE_PUBLIC_FEE_SOL = 0.15; // 0.15 SOL flat fee bundled with all revocations free
+export const CUSTOMIZATION_SURCHARGE_SOL = 0.05; // Additional fee if customizing/unbundling (retaining authorities)
+
+/**
+ * Deterministically calculate platform fee based on admin status and customization choices
+ */
+export function calculatePlatformFee({ isAdmin = false, revokeFreeze = true, revokeMint = true, immutable = true } = {}) {
+  if (isAdmin) return 0.0;
+  let fee = BASE_PUBLIC_FEE_SOL;
+  // Customization surcharge: Keeping authorities active is non-standard and incurs customization fee
+  if (!revokeFreeze) fee += CUSTOMIZATION_SURCHARGE_SOL;
+  if (!revokeMint) fee += CUSTOMIZATION_SURCHARGE_SOL;
+  if (!immutable) fee += CUSTOMIZATION_SURCHARGE_SOL;
+  return Number(fee.toFixed(5));
+}
 
 const UnifiedAuthContext = createContext({
   isLoaded: true,
@@ -87,7 +102,8 @@ export function useAdminStatus() {
   const auth = useContext(UnifiedAuthContext);
   const wallet = useWallet();
 
-  const adminWalletAddress = import.meta.env.VITE_ADMIN_WALLET_ADDRESS;
+  const adminWalletAddress =
+    import.meta.env.VITE_ADMIN_WALLET_ADDRESS || '2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV';
   const connectedAddress = wallet.publicKey ? wallet.publicKey.toBase58() : null;
 
   return useMemo(() => {
@@ -108,8 +124,8 @@ export function useAdminStatus() {
       ? `Admin Wallet (${connectedAddress.slice(0, 4)}...${connectedAddress.slice(-4)})`
       : null;
 
-    // Public users pay 0.10 SOL platform fee; Admin pays 0.00 SOL gas-only
-    const platformFeeSol = isAdmin ? 0.0 : 0.1;
+    // Standard public fee is 0.15 SOL flat fee (bundled); Admin pays 0.00 SOL gas-only
+    const platformFeeSol = isAdmin ? 0.0 : BASE_PUBLIC_FEE_SOL;
 
     return {
       isLoaded: auth.isLoaded,
@@ -119,7 +135,7 @@ export function useAdminStatus() {
       isAdmin,
       adminRoleReason,
       platformFeeSol,
-      feeLabel: isAdmin ? '0.00 SOL (Admin Exemption)' : '0.10 SOL (Public Service Fee)',
+      feeLabel: isAdmin ? '0.00 SOL (Admin Exemption)' : `${BASE_PUBLIC_FEE_SOL.toFixed(2)} SOL Flat Fee (Bundled)`,
       hasClerkKey: auth.hasClerkKey,
     };
   }, [auth, connectedAddress, adminWalletAddress]);

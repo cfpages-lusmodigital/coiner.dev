@@ -7,11 +7,11 @@ import { HelpCircle } from 'lucide-react';
 const faqItems = [
   {
     question: "How much does it cost to create a token on coiner.dev?",
-    answer: "coiner.dev charges a flat, competitive 0.10 SOL platform fee for public creators — saving you up to 80% compared to third-party tools (such as Smithii or Orion which charge 0.20 to 0.50+ SOL). In addition to the service fee, the Solana network charges raw rent (~0.007 SOL) and Metaplex protocol creation fee (0.01 SOL on mainnet). For the platform administrator (admin@alampintar.org), a 0.00 SOL platform fee exemption applies automatically."
+    answer: "coiner.dev charges a flat 0.15 SOL bundled platform fee for public creators with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning included 100% free with zero upsell (competitors charge up to 0.40–0.80 SOL for the same bundle). If you require non-standard customization (such as retaining freeze or mint powers), a +0.05 SOL customization fee applies per retained authority. In addition, the Solana network charges raw rent (~0.007 SOL) and Metaplex protocol creation fee (0.01 SOL on mainnet). For the platform administrator (admin@alampintar.org / Admin Wallet), a 0.00 SOL platform fee exemption applies automatically."
   },
   {
     question: "How does the Admin Fee Exemption work?",
-    answer: "When the administrator signs in via Clerk with admin@alampintar.org (or connects an authorized admin Solana wallet), coiner.dev activates Admin Mode. This waives the 0.10 SOL platform fee (0.00 SOL fee), charging strictly the raw on-chain Solana rent and gas."
+    answer: "When the administrator signs in via Clerk with admin@alampintar.org (or connects an authorized admin Solana wallet), coiner.dev activates Admin Mode. This waives the 0.15 SOL platform fee (0.00 SOL platform fee), charging strictly the raw on-chain Solana rent and gas."
   },
   {
     question: "Is it safe and non-custodial?",

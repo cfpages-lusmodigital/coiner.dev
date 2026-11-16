@@ -1,5 +1,5 @@
 // src/components/CreatorPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import TokenForm from './TokenForm';
 import LivePreview from './LivePreview';
 import LaunchModal from './LaunchModal';
@@ -26,6 +26,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
   const [statusMessage, setStatusMessage] = useState('');
   const [launchError, setLaunchError] = useState('');
   const [launchResult, setLaunchResult] = useState(null);
+  const formSubmitRef = useRef(null);
 
   const handleLaunchStart = () => {
     setLaunchError('');
@@ -58,7 +59,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
         <div className="text-center mb-10 max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Sovereign Solana Creator • Flat 0.10 SOL Public Fee • 0.00 SOL Admin Mode
+            Sovereign Solana Creator • Flat 0.15 SOL Bundled Fee • 0.00 SOL Admin Mode
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
@@ -70,7 +71,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
 
           <p className="text-base sm:text-lg text-gray-400 leading-relaxed">
             Create SPL & meme coins in one atomic transaction directly from your wallet.
-            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and enjoy a flat 0.10 SOL fee—saving up to 80% vs competitor markups.
+            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and enjoy a flat 0.15 SOL fee with all revocations bundled 100% free—saving vs competitor add-on markups.
           </p>
 
           {/* Quick Value Props */}
@@ -101,6 +102,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
               onLaunchSuccess={handleLaunchSuccess}
               onLaunchError={handleLaunchError}
               network={network}
+              triggerSubmitRef={formSubmitRef}
             />
           </div>
 
@@ -129,7 +131,13 @@ const CreatorPage = ({ network = 'devnet' }) => {
         error={launchError}
         result={launchResult}
         network={network}
-        onRetry={handleLaunchStart}
+        onRetry={() => {
+          if (formSubmitRef.current) {
+            formSubmitRef.current();
+          } else {
+            handleLaunchStart();
+          }
+        }}
       />
     </>
   );

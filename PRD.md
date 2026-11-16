@@ -16,9 +16,9 @@
 
 ### Core Philosophy
 1. **Sovereignty & Non-Custodial Security:** Zero server-side private keys or custodial wallets. All mint transactions are assembled in browser RAM and signed directly by the user's connected wallet (Phantom, Solflare, etc.).
-2. **Dual-Tier Commercial Model:**
-   - **Administrator (`admin@alampintar.org` / Admin Wallet):** **0.00 SOL** platform fee (pays strictly raw Solana rent and Metaplex protocol creation cost).
-   - **Public Users:** **0.10 SOL** flat platform service fee, collected atomically on-chain in the same transaction as token creation and transferred to the platform treasury wallet.
+2. **Dual-Tier Commercial & Bundled Security Model:**
+   - **Administrator (`admin@alampintar.org` / Admin Wallet `2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`):** **0.00 SOL** platform fee (pays strictly raw Solana rent and Metaplex protocol creation cost ~0.0168 SOL).
+   - **Public Users:** **0.15 SOL** flat platform service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning bundled 100% free with zero upsell. Customization to retain any authority (non-standard configuration) incurs a **+0.05 SOL** fee per kept authority. Fees transfer atomically on-chain to the treasury wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
 3. **Atomic Settlement:** Token minting, account creation, supply distribution, Metaplex metadata registration, authority revocation, and fee transfer settle together or not at all.
 4. **Transparent Economics:** No hidden fees, no token percentage extraction, no smart contract lockup. The creator retains 100% of supply in their own wallet immediately.
 
@@ -36,7 +36,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 | **DexLab** (`dexlab.space`) | 0.15 SOL | Included at launch | **0.17 SOL** (with ~0.02 SOL rent) | Vesting schedules, DEX market creator | Complex developer UI; slow metadata propagation; dated visual design. |
 | **SlerfTools** (`slerf.tools`) | ~0.10 SOL | Included at launch | **~0.12 SOL** | Multi-sender (0.002 SOL/addr), market creator, LP locker | Bare-bones interface; lacks real-time live preview or RugCheck simulations. |
 | **Pump.fun** (`pump.fun`) | 0.00 SOL upfront | Built-in bonding curve | **0.00 SOL upfront**, but 1% trading fee + 2 SOL Raydium migration fee | Instant bonding curve, King of the Hill gamification, livestreaming, auto-graduation | Not a plain SPL creator; forces users into proprietary bonding curve with high slip and platform control. |
-| **coiner.dev** (Our Platform) | **0.00 SOL** (Admin)<br/>**0.10 SOL** (Public) | **Included Free** (Revoke Freeze, Revoke Mint, Immutable) | **~0.0168 SOL** (Admin)<br/>**~0.1168 SOL** (Public) | Live DEX preview, RugCheck predictor, 1-click Raydium CPMM link, Clerk admin sync | **Best-in-class pricing (saves 80%+ vs Smithii); zero-fee admin mode; 100% non-custodial.** |
+| **coiner.dev** (Our Platform) | **0.00 SOL** (Admin)<br/>**0.15 SOL** (Public Bundled) | **Included Free** (Revoke Freeze, Revoke Mint, Immutable); +0.05 SOL if customized | **~0.0168 SOL** (Admin)<br/>**~0.1668 SOL** (Public) | Live DEX preview, RugCheck predictor, 1-click Raydium CPMM link, Clerk admin sync | **Best-in-class bundled pricing; zero-fee admin mode; 100% non-custodial; no upsell traps.** |
 
 ---
 
@@ -112,7 +112,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 | Metric | Target | Measurement Source |
 |---|---|---|
 | **Token Creation Success Rate** | > 99.0% | Client-side confirmation callbacks & RPC telemetry |
-| **Public Platform Revenue** | 0.10 SOL per public launch | On-chain Treasury Wallet balance (`VITE_TREASURY_WALLET`) |
+| **Public Platform Revenue** | 0.15 SOL flat bundled fee (+0.05 SOL if customized) | On-chain Treasury Wallet balance (`VITE_TREASURY_WALLET`) |
 | **Admin Creation Cost** | Raw on-chain gas only (~0.0168 SOL) | On-chain fee payer transaction receipts |
 | **Time to Launch** | < 15 seconds from Form Submit to On-Chain Finality | Client stopwatch telemetry in `LaunchModal.jsx` |
 | **RugCheck Compatibility** | 100% "Good" / A-Grade score | RugCheck API & on-chain authority inspection |

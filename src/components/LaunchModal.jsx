@@ -271,15 +271,35 @@ const LaunchModal = ({
 
               {/* Security Badges */}
               <div className="flex flex-wrap gap-2 justify-center w-full">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Freeze Revoked
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Mint Revoked (Fixed Supply)
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Immutable
-                </span>
+                {tokenData?.revokeFreeze !== false ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Freeze Revoked
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300">
+                    <AlertCircle className="w-3.5 h-3.5" /> Freeze Retained (Custom)
+                  </span>
+                )}
+
+                {tokenData?.revokeMint !== false ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Mint Revoked (Fixed Supply)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300">
+                    <AlertCircle className="w-3.5 h-3.5" /> Mint Retained (Custom)
+                  </span>
+                )}
+
+                {tokenData?.immutable !== false ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-400">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Immutable
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300">
+                    <AlertCircle className="w-3.5 h-3.5" /> Mutable Metadata (Custom)
+                  </span>
+                )}
               </div>
 
               {/* Action Buttons */}

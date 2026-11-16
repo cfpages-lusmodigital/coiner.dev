@@ -140,11 +140,20 @@ export async function onRequestPost(context) {
       const metaData = await metaRes.json();
       metadataUri = `https://gateway.pinata.cloud/ipfs/${metaData.IpfsHash}`;
     } else {
-      // Graceful fallback for dev / testing environments before IPFS secrets are configured
-      const fallbackHash = 'bafkrei' + Array.from(crypto.getRandomValues(new Uint8Array(20)))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-      imageUri = `https://gateway.pinata.cloud/ipfs/${fallbackHash}`;
-      metadataUri = `https://gateway.pinata.cloud/ipfs/${fallbackHash}`;
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'Pinata IPFS credentials (PINATA_API_KEY and PINATA_SECRET_KEY, or PINATA_JWT) are not configured. Cannot pin immutable token metadata to IPFS.',
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     return new Response(

@@ -13,7 +13,7 @@
 
 ### 1.1 Product
 
-`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creation studio that enables crypto founders, degens, and community builders to deploy fully compliant, RugCheck A-Grade tokens in a single atomic on-chain transaction. It eliminates predatory third-party platform markups through a transparent Dual-Tier Fee Model: public creators pay a flat, competitive 0.10 SOL service fee (saving up to 80% vs competitors charging 0.40–0.80+ SOL), while the platform owner receives a 0.00 SOL fee exemption when authenticated as `admin@alampintar.org` via Clerk or when connecting an authorized admin Solana wallet.
+`coiner.dev` is a sovereign, non-custodial Solana SPL and meme coin creation studio that enables crypto founders, degens, and community builders to deploy fully compliant, RugCheck A-Grade tokens in a single atomic on-chain transaction. It eliminates predatory third-party platform markups through a transparent Dual-Tier Fee Model: public creators pay a flat 0.15 SOL bundled service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning included 100% free with zero upsell (while non-standard customizations to retain any authority incur +0.05 SOL each), and the platform owner receives a 0.00 SOL fee exemption when authenticated as `admin@alampintar.org` via Clerk or when connecting an authorized admin Solana wallet.
 
 ### 1.2 Primary users
 
@@ -38,10 +38,10 @@
 
 | Stage | User goal | Entry point | Pages or screens | Exit and next stage |
 |---|---|---|---|---|
-| Discover & Inspect | Understand pricing transparency, verify zero platform markup or 0.10 SOL flat fee, and review security standards. | Direct URL (`https://coiner.dev`) or Twitter/Telegram link. | Token Creator Studio | Configure & Preview |
+| Discover & Inspect | Understand pricing transparency, verify zero platform markup or 0.15 SOL flat bundled fee, and review security standards. | Direct URL (`https://coiner.dev`) or Twitter/Telegram link. | Token Creator Studio | Configure & Preview |
 | Identity & Access | Authenticate as administrator via Clerk (`admin@alampintar.org`) or connect admin Solana wallet to activate 0.00 SOL platform fee exemption. | Header "Admin Sign In" button or wallet connect. | Admin Auth Overlay | Configure & Preview |
 | Configure & Preview | Define token parameters (name, symbol, supply, decimals, logo) and inspect real-time DEX card simulation. | Connected wallet on homepage. | Token Creator Studio | Authorize & Pay |
-| Authorize & Pay | Sign the single atomic transaction in Phantom/Solflare and settle platform fee (0.10 SOL Public / 0.00 SOL Admin). | "Create Token" CTA click. | Launch & Settlement Modal | Verify & Graduate |
+| Authorize & Pay | Sign the single atomic transaction in Phantom/Solflare and settle platform fee (0.15 SOL Public Bundled / 0.00 SOL Admin). | "Create Token" CTA click. | Launch & Settlement Modal | Verify & Graduate |
 | Verify & Graduate | Copy mint address, verify metadata on Solscan, audit safety on RugCheck, and create Raydium CPMM pool. | On-chain confirmation. | Launch & Settlement Modal | Raydium pool creation or Solscan explorer |
 
 ### 2.2 Journey diagram
@@ -194,7 +194,7 @@ Labels clearly mark required fields with emerald asterisks. Decimals input conta
 |---|---|---|
 | Fitts's Law | Primary "Create Token" CTA spans full form width (h-12 / 48px) directly under the cost summary. | [TokenForm.jsx#L569](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L569) button dimensions |
 | Visual Hierarchy | Bold 24px CardTitle with Sparkles icon dominates; secondary toggles use compact 14px labels. | CardTitle leading CardHeader in [TokenForm.jsx#L198](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L198) |
-| Von Restorff Effect | Emerald "Admin (0 SOL Fee)" badge or "Flat 0.10 SOL Fee" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx#L206](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L206) |
+| Von Restorff Effect | Emerald "Admin (0 SOL Fee)" badge or "Flat 0.15 SOL Fee (Bundled)" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx#L206](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L206) |
 | Object Constancy | Header remains sticky at top-0 (`bg-gray-950/85 backdrop-blur-md`) through entire configuration journey. | Sticky header markup in [App.jsx#L36](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L36) |
 | Snapping | Priority fee buttons snap into an equal 3-column grid (`grid-cols-3 gap-2`). | Grid layout in [TokenForm.jsx#L491](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L491) |
 | Motion Blur | N/A: studio form elements update instantaneously on state changes without high-velocity spatial movement. | Form fields update in-place without animated layout translation |
@@ -356,7 +356,7 @@ Provides direct, educational answers detailing why Freeze authority must be revo
 
 #### Verification
 - Accordion keyboard accessibility verified with Tab, Space, and Enter keys.
-- Text content reviewed for 100% accuracy regarding 0.10 SOL public fee and 0.00 SOL admin exemption.
+- Text content reviewed for 100% accuracy regarding 0.15 SOL flat bundled public fee and 0.00 SOL admin exemption.
 
 ---
 

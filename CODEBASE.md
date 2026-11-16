@@ -16,9 +16,9 @@
 1. **100% Non-Custodial:** User private keys are never requested, handled, or stored. The transaction fee payer, account-rent payer, supply recipient, and initial mint authority are strictly the user's connected wallet (Phantom, Solflare, etc.).
 2. **Atomic Settlement:** The token creation instructions (compute budget, mint account creation, ATA creation, supply minting, Metaplex metadata registration, authority revocation, and optional platform fee transfer) are packed into a single atomic Solana transaction. If any instruction fails, the entire transaction reverts on-chain.
 3. **Stateless IPFS Proxy:** Third-party pinning credentials (`PINATA_API_KEY`, `PINATA_SECRET_API_KEY`, `PINATA_JWT`) are kept strictly within Cloudflare Pages Functions serverless environment (`context.env`). They are never baked into public client JavaScript bundles.
-4. **Dual-Tier Fee Model:**
-   - **Public Users:** Pay a flat **0.10 SOL** platform service fee (transferred on-chain directly to `TREASURY_WALLET`).
-   - **Administrator:** Automatically receives a **0.00 SOL** platform fee exemption (gas-only deployment) when authenticated as `admin@alampintar.org` via Clerk or when connecting an authorized admin Solana wallet (`ADMIN_WALLET_ADDRESS`).
+4. **Dual-Tier Fee & Bundling Model:**
+   - **Public Users:** Pay a flat **0.15 SOL** platform service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning bundled 100% free with zero upsell. Customization to retain any authority (non-standard unbundled configuration) incurs a **+0.05 SOL** surcharge per kept authority. Fees transfer atomically on-chain directly to `TREASURY_WALLET` (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
+   - **Administrator:** Automatically receives a **0.00 SOL** platform fee exemption (gas-only deployment ~0.0168 SOL) when authenticated as `admin@alampintar.org` via Clerk or when connecting the authorized admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
 
 ---
 
@@ -75,13 +75,13 @@ coiner.dev/
 
 ### 3.2 `src/lib/solana.js`
 - **`calculateRawAmount(supplyStr, decimals)`**: Converts human-readable token supply strings (e.g., `"1,000,000,000"`) into raw BigInt lamport amounts with exact zero-padding. Enforces `u64::MAX` boundary checks.
-- **`estimateRentCosts(connection, platformFeeSol, isMainnet)`**: Pre-computes exact on-chain rent-exemption lamports from the RPC:
+- **`estimateRentCosts(connection, platformFeeSol, isMainnet, priorityFeeMicroLamports)`**: Pre-computes exact on-chain rent-exemption lamports from the RPC:
   - SPL Mint Account: 82 bytes (~0.00107 SOL)
   - Creator ATA: 165 bytes (~0.00149 SOL)
   - Metaplex Metadata PDA: ~679 bytes (~0.00410 SOL)
   - Metaplex Protocol Creation Fee: 0.01000 SOL (on Mainnet)
-  - Network Gas Buffer: ~0.00010 SOL
-  - Platform Service Fee: 0.10000 SOL (Public) vs 0.00000 SOL (Admin)
+  - Dynamic Network Gas & Compute Priority: calculated dynamically based on speed (Normal: ~0.00002 SOL, Fast: ~0.00007 SOL, Turbo: ~0.00026 SOL)
+  - Platform Service Fee: 0.15000 SOL bundled flat fee (+0.05 SOL per kept authority if customized) vs 0.00000 SOL (Admin)
 - **`createSolanaToken({ connection, wallet, tokenConfig, onProgress })`**: Builds and broadcasts the atomic transaction:
   1. `ComputeBudgetProgram.setComputeUnitPrice` & `setComputeUnitLimit(250,000)`
   2. `SystemProgram.transfer` to `treasuryAddress` (only if `platformFeeSol > 0`). Fails closed if treasury is unconfigured.
@@ -106,8 +106,8 @@ coiner.dev/
 
 | Variable | Scope | Purpose |
 |---|---|---|
-| `VITE_TREASURY_WALLET` | Public Client (Build-time) | Solana treasury address receiving public 0.10 SOL fees |
-| `VITE_ADMIN_WALLET_ADDRESS` | Public Client (Build-time) | Solana wallet address receiving 0.00 SOL admin exemption |
+| `VITE_TREASURY_WALLET` | Public Client (Build-time) | Solana treasury address receiving public 0.15 SOL fees (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`) |
+| `VITE_ADMIN_WALLET_ADDRESS` | Public Client (Build-time) | Solana wallet address receiving 0.00 SOL admin exemption (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`) |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Public Client (Build-time) | Clerk publishable key for user authentication |
 | `VITE_SOLANA_RPC_MAINNET` | Public Client (Build-time) | Dedicated Solana Mainnet RPC endpoint |
 | `VITE_SOLANA_RPC_DEVNET` | Public Client (Build-time) | Dedicated Solana Devnet RPC endpoint |

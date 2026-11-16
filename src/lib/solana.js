@@ -59,8 +59,19 @@ export function calculateRawAmount(supplyStr, decimals) {
 /**
  * Pre-estimates exact on-chain rent costs in SOL (with transparent itemized breakdown)
  */
-export async function estimateRentCosts(connection, platformFeeSol = 0, isMainnet = false) {
+export async function estimateRentCosts(
+  connection,
+  platformFeeSol = 0,
+  isMainnet = false,
+  priorityFeeMicroLamports = 0
+) {
   const metaplexProtocolLamports = isMainnet ? 10_000_000n : 0n; // 0.01 SOL on mainnet
+  const priorityLamports = BigInt(
+    Math.ceil((Number(priorityFeeMicroLamports || 0) * 250000) / 1000000)
+  );
+  const networkGasBuffer = 10_000n + priorityLamports; // 5000-10000 base fee + compute budget priority
+  const networkGasSol = (Number(networkGasBuffer) / 1e9).toFixed(5);
+
   try {
     const mintRent = BigInt(await connection.getMinimumBalanceForRentExemption(MINT_SIZE));
     // Classic ATA is 165 bytes
@@ -69,7 +80,6 @@ export async function estimateRentCosts(connection, platformFeeSol = 0, isMainne
     const metadataRent = BigInt(await connection.getMinimumBalanceForRentExemption(679));
 
     const feeLamports = BigInt(Math.round(Number(platformFeeSol) * 1e9));
-    const networkGasBuffer = 100_000n; // 0.00010 SOL buffer for gas & priority fee
 
     const totalLamports =
       mintRent + ataRent + metadataRent + metaplexProtocolLamports + networkGasBuffer + feeLamports;
@@ -79,20 +89,21 @@ export async function estimateRentCosts(connection, platformFeeSol = 0, isMainne
       ataRentSol: (Number(ataRent) / 1e9).toFixed(5),
       metadataRentSol: (Number(metadataRent) / 1e9).toFixed(5),
       metaplexProtocolSol: (Number(metaplexProtocolLamports) / 1e9).toFixed(5),
-      networkGasSol: '0.00010',
+      networkGasSol,
       platformFeeSol: Number(platformFeeSol).toFixed(5),
       estimatedTotalSol: (Number(totalLamports) / 1e9).toFixed(5),
     };
   } catch {
     const fee = Number(platformFeeSol);
     const metaProtocol = isMainnet ? 0.01 : 0.0;
-    const baseTotal = 0.00676 + metaProtocol + fee;
+    const gasNum = Number(networkGasBuffer) / 1e9;
+    const baseTotal = 0.00666 + metaProtocol + fee + gasNum;
     return {
       mintRentSol: '0.00107',
       ataRentSol: '0.00149',
       metadataRentSol: '0.00410',
       metaplexProtocolSol: metaProtocol.toFixed(5),
-      networkGasSol: '0.00010',
+      networkGasSol,
       platformFeeSol: fee.toFixed(5),
       estimatedTotalSol: baseTotal.toFixed(5),
     };
@@ -119,7 +130,7 @@ export async function createSolanaToken({
     immutable = true,
     priorityFeeMicroLamports = 50000, // 0.05 lamports/CU default
     platformFeeSol = 0,
-    treasuryAddress = import.meta.env.VITE_TREASURY_WALLET,
+    treasuryAddress = import.meta.env.VITE_TREASURY_WALLET || '2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV',
   } = tokenConfig;
 
   if (!wallet || !wallet.publicKey) {
@@ -150,7 +161,8 @@ export async function createSolanaToken({
   );
 
   // 4. Calculate total raw supply (BigInt safe with u64 boundary check)
-  const safeDecimals = Math.max(0, Math.min(9, parseInt(decimals || '6', 10)));
+  const parsedDecimals = parseInt(decimals != null ? String(decimals) : '6', 10);
+  const safeDecimals = Number.isNaN(parsedDecimals) ? 6 : Math.max(0, Math.min(9, parsedDecimals));
   const rawSupply = calculateRawAmount(String(supply), safeDecimals);
   const U64_MAX = 18446744073709551615n;
   if (rawSupply > U64_MAX) {
@@ -177,7 +189,7 @@ export async function createSolanaToken({
     })
   );
 
-  // 5b. Platform Service Fee Transfer (Public: 0.10 SOL to Treasury; Admin: 0.00 SOL)
+  // 5b. Platform Service Fee Transfer (Public: 0.15 SOL bundled base fee; Admin: 0.00 SOL)
   if (platformFeeSol > 0) {
     if (!treasuryAddress) {
       throw new Error(
@@ -212,7 +224,7 @@ export async function createSolanaToken({
   transaction.add(
     createInitializeMintInstruction(
       mintPublicKey,
-      decimals,
+      safeDecimals,
       userPublicKey,
       userPublicKey, // temporary freeze authority before revoking
       TOKEN_PROGRAM_ID

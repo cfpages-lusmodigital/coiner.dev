@@ -1,5 +1,5 @@
 // src/components/TokenForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,13 @@ import {
   Crown,
 } from 'lucide-react';
 import { createSolanaToken, estimateRentCosts } from '@/lib/solana';
-import { useAdminStatus } from '@/lib/clerk';
+import { useAdminStatus, calculatePlatformFee, BASE_PUBLIC_FEE_SOL, CUSTOMIZATION_SURCHARGE_SOL } from '@/lib/clerk';
+
+const PRIORITY_FEE_MAP = {
+  normal: 50000,   // ~0.0000125 SOL at 250k CU
+  fast: 250000,    // ~0.0000625 SOL at 250k CU
+  turbo: 1000000,  // ~0.0002500 SOL at 250k CU
+};
 
 const TokenForm = ({
   formData,
@@ -30,23 +36,14 @@ const TokenForm = ({
   onLaunchSuccess,
   onLaunchError,
   network = 'devnet',
+  triggerSubmitRef,
 }) => {
   const { connection } = useConnection();
   const wallet = useWallet();
   const { connected, publicKey } = wallet;
-  const { isAdmin, platformFeeSol, adminRoleReason } = useAdminStatus();
+  const { isAdmin, adminRoleReason } = useAdminStatus();
 
   const isMainnet = network === 'mainnet-beta' || network === 'mainnet';
-
-  const [rentCosts, setRentCosts] = useState({
-    mintRentSol: '0.00107',
-    ataRentSol: '0.00149',
-    metadataRentSol: '0.00410',
-    metaplexProtocolSol: isMainnet ? '0.01000' : '0.00000',
-    networkGasSol: '0.00010',
-    platformFeeSol: Number(platformFeeSol).toFixed(5),
-    estimatedTotalSol: (0.00676 + (isMainnet ? 0.01 : 0) + Number(platformFeeSol)).toFixed(5),
-  });
 
   const [prioritySpeed, setPrioritySpeed] = useState('fast'); // normal | fast | turbo
   const [securityOptions, setSecurityOptions] = useState({
@@ -55,16 +52,61 @@ const TokenForm = ({
     immutable: true,
   });
 
-  // Fetch live rent estimates from connected RPC whenever connection, fee, or network changes
+  // Sync security choices to formData so LivePreview and LaunchModal always reflect live state
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      revokeFreeze: securityOptions.revokeFreeze,
+      revokeMint: securityOptions.revokeMint,
+      immutable: securityOptions.immutable,
+    }));
+  }, [securityOptions, setFormData]);
+
+  // Calculate dynamic platform fee: 0.15 SOL bundled baseline; +0.05 SOL per kept authority if customized
+  const currentPlatformFeeSol = useMemo(() => {
+    return calculatePlatformFee({
+      isAdmin,
+      revokeFreeze: securityOptions.revokeFreeze,
+      revokeMint: securityOptions.revokeMint,
+      immutable: securityOptions.immutable,
+    });
+  }, [isAdmin, securityOptions]);
+
+  const customizationCount = useMemo(() => {
+    let count = 0;
+    if (!securityOptions.revokeFreeze) count++;
+    if (!securityOptions.revokeMint) count++;
+    if (!securityOptions.immutable) count++;
+    return count;
+  }, [securityOptions]);
+
+  const [rentCosts, setRentCosts] = useState({
+    mintRentSol: '0.00107',
+    ataRentSol: '0.00149',
+    metadataRentSol: '0.00410',
+    metaplexProtocolSol: isMainnet ? '0.01000' : '0.00000',
+    networkGasSol: '0.00010',
+    platformFeeSol: currentPlatformFeeSol.toFixed(5),
+    estimatedTotalSol: (0.00676 + (isMainnet ? 0.01 : 0) + currentPlatformFeeSol).toFixed(5),
+  });
+
+  // Fetch live rent estimates from connected RPC whenever connection, fee, network, or priority changes
   useEffect(() => {
     let isMounted = true;
-    estimateRentCosts(connection, platformFeeSol, isMainnet).then((costs) => {
+    const microLamports = PRIORITY_FEE_MAP[prioritySpeed] || 250000;
+    estimateRentCosts(connection, currentPlatformFeeSol, isMainnet, microLamports).then((costs) => {
       if (isMounted) setRentCosts(costs);
     });
     return () => {
       isMounted = false;
     };
-  }, [connection, platformFeeSol, isMainnet]);
+  }, [connection, currentPlatformFeeSol, isMainnet, prioritySpeed]);
+
+  useEffect(() => {
+    if (triggerSubmitRef) {
+      triggerSubmitRef.current = handleCreateToken;
+    }
+  });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -127,7 +169,12 @@ const TokenForm = ({
       uploadData.append('name', formData.name);
       uploadData.append('symbol', (formData.symbol || formData.ticker).toUpperCase());
       uploadData.append('description', formData.description || '');
-      uploadData.append('decimals', formData.decimals || '6');
+      const safeDecimalsVal =
+        formData.decimals != null && formData.decimals !== ''
+          ? parseInt(String(formData.decimals), 10)
+          : 6;
+
+      uploadData.append('decimals', String(Number.isNaN(safeDecimalsVal) ? 6 : safeDecimalsVal));
       uploadData.append('supply', formData.supply || '1000000000');
       uploadData.append('website', formData.website || '');
       uploadData.append('twitter', formData.twitter || '');
@@ -162,14 +209,14 @@ const TokenForm = ({
         tokenConfig: {
           name: formData.name,
           symbol: (formData.symbol || formData.ticker).toUpperCase(),
-          decimals: parseInt(formData.decimals || '6', 10),
+          decimals: Number.isNaN(safeDecimalsVal) ? 6 : safeDecimalsVal,
           supply: formData.supply || '1000000000',
           metadataUri,
           revokeFreeze: securityOptions.revokeFreeze,
           revokeMint: securityOptions.revokeMint,
           immutable: securityOptions.immutable,
-          priorityFeeMicroLamports: priorityFeeMap[prioritySpeed] || 250000,
-          platformFeeSol,
+          priorityFeeMicroLamports: PRIORITY_FEE_MAP[prioritySpeed] || 250000,
+          platformFeeSol: currentPlatformFeeSol,
         },
         onProgress: (step, msg) => {
           onLaunchProgress(step, msg);
@@ -201,7 +248,7 @@ const TokenForm = ({
             <CardDescription className="text-gray-400 text-sm mt-0.5">
               {isAdmin
                 ? 'Admin mode active (admin@alampintar.org). Zero platform fees (gas-only).'
-                : 'Atomic Solana token deployment at flat 0.10 SOL platform fee. Save 80% vs competitors.'}
+                : 'Atomic Solana token deployment at flat 0.15 SOL bundled fee. Zero upsell, all revocations included.'}
             </CardDescription>
           </div>
           {isAdmin ? (
@@ -214,7 +261,7 @@ const TokenForm = ({
             </span>
           ) : (
             <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-gray-900 border border-gray-800 text-gray-300">
-              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.10 SOL Fee
+              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.15 SOL Fee (Bundled)
             </span>
           )}
         </div>
@@ -408,9 +455,15 @@ const TokenForm = ({
         <div className="space-y-3 pt-2 border-t border-gray-800/80">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Rug-Proof Controls (Free)
+              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Security & Authority Controls
             </span>
-            <span className="text-[11px] text-emerald-400 font-mono">100% Free Included</span>
+            <span className="text-[11px] font-mono">
+              {customizationCount === 0 ? (
+                <span className="text-emerald-400 font-bold">✓ 100% Free Bundled (0.15 SOL)</span>
+              ) : (
+                <span className="text-amber-400 font-bold">+{ (customizationCount * 0.05).toFixed(2) } SOL Customization</span>
+              )}
+            </span>
           </div>
 
           <div className="space-y-2.5 bg-gray-950/70 p-3.5 rounded-xl border border-gray-800/80">
@@ -419,9 +472,15 @@ const TokenForm = ({
               <div className="space-y-0.5 pr-2">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs font-semibold text-white">Revoke Freeze Authority</Label>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                    Raydium Essential
-                  </span>
+                  {securityOptions.revokeFreeze ? (
+                    <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                      ✓ Bundled Free
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                      +0.05 SOL Customization
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-gray-400">
                   Required to create Raydium pools and get verified on DexScreener/RugCheck.
@@ -440,9 +499,15 @@ const TokenForm = ({
               <div className="space-y-0.5 pr-2">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs font-semibold text-white">Revoke Mint Authority</Label>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                    Zero Inflation
-                  </span>
+                  {securityOptions.revokeMint ? (
+                    <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                      ✓ Bundled Free
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                      +0.05 SOL Customization
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-gray-400">
                   Caps total supply forever. No more tokens can ever be minted.
@@ -461,9 +526,15 @@ const TokenForm = ({
               <div className="space-y-0.5 pr-2">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs font-semibold text-white">Immutable Metadata</Label>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                    Permanent
-                  </span>
+                  {securityOptions.immutable ? (
+                    <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                      ✓ Bundled Free
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                      +0.05 SOL Customization
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-gray-400">
                   Permanently locks token name, symbol, logo, and metadata.
@@ -546,15 +617,21 @@ const TokenForm = ({
               <span className="font-mono">~{rentCosts.networkGasSol || '0.00010'} SOL</span>
             </div>
             <div className="flex justify-between pt-1 border-t border-gray-800/60 items-center">
-              <span className="font-medium text-gray-200">coiner.dev Service Fee:</span>
+              <span className="font-medium text-gray-200">coiner.dev Flat Base Fee:</span>
               {isAdmin ? (
                 <span className="font-mono text-emerald-400 font-bold flex items-center gap-1">
                   <Crown className="w-3 h-3 text-amber-400" /> 0.00000 SOL (Admin Exemption)
                 </span>
               ) : (
-                <span className="font-mono text-white font-semibold">0.10000 SOL</span>
+                <span className="font-mono text-white font-semibold">0.15000 SOL (All Revocations Included)</span>
               )}
             </div>
+            {customizationCount > 0 && !isAdmin && (
+              <div className="flex justify-between text-amber-300 text-xs">
+                <span>Customization Surcharge ({customizationCount} retained {customizationCount === 1 ? 'authority' : 'authorities'}):</span>
+                <span className="font-mono">+{(customizationCount * 0.05).toFixed(5)} SOL</span>
+              </div>
+            )}
             <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-gray-800 items-center">
               <span>Total Estimated Network Cost:</span>
               <span className="font-mono text-emerald-400 text-base font-extrabold">
@@ -580,7 +657,7 @@ const TokenForm = ({
           <p className="text-[11px] text-center text-gray-500 mt-2">
             {isAdmin
               ? '👑 Admin Mode: 0.00 SOL platform markup applied. Raw Solana rent & gas only.'
-              : 'Flat 0.10 SOL platform fee + Solana on-chain rent. You retain 100% of supply in your own wallet immediately.'}
+              : 'Flat 0.15 SOL bundled fee (all 3 revocations included free). Customization to retain any authority incurs +0.05 SOL.'}
           </p>
         </div>
       </CardContent>

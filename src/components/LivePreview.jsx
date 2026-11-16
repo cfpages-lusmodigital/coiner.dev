@@ -9,6 +9,7 @@ import {
   Send,
   Flame,
   CheckCircle2,
+  AlertCircle,
   ExternalLink,
   Crown,
 } from 'lucide-react';
@@ -119,22 +120,61 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
               <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" /> RugCheck Predicted Score
               </span>
-              <span className="text-xs font-bold text-emerald-300 font-mono bg-emerald-900/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                GOOD (A-GRADE)
+              <span
+                className={`text-xs font-bold font-mono px-2 py-0.5 rounded border ${
+                  formData.revokeFreeze !== false &&
+                  formData.revokeMint !== false &&
+                  formData.immutable !== false
+                    ? 'text-emerald-300 bg-emerald-900/60 border-emerald-500/30'
+                    : 'text-amber-300 bg-amber-900/60 border-amber-500/30'
+                }`}
+              >
+                {formData.revokeFreeze !== false &&
+                formData.revokeMint !== false &&
+                formData.immutable !== false
+                  ? 'GOOD (A-GRADE)'
+                  : 'CAUTION (CUSTOM)'}
               </span>
             </div>
             <div className="text-[11px] text-gray-300 space-y-1 pt-1">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span>Freeze Authority: <strong>Revoked</strong> (Raydium ready)</span>
+                {formData.revokeFreeze !== false ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Freeze Authority: <strong>Revoked</strong> (Raydium ready)</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="text-amber-200">Freeze Authority: <strong>Retained</strong> (+0.05 SOL custom)</span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span>Mint Authority: <strong>Revoked</strong> (No inflation)</span>
+                {formData.revokeMint !== false ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Mint Authority: <strong>Revoked</strong> (No inflation)</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="text-amber-200">Mint Authority: <strong>Retained</strong> (+0.05 SOL custom)</span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span>Metadata: <strong>Immutable</strong> (Permanent)</span>
+                {formData.immutable !== false ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Metadata: <strong>Immutable</strong> (Permanent)</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="text-amber-200">Metadata: <strong>Mutable</strong> (+0.05 SOL custom)</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -148,22 +188,22 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
             <Flame className="w-3.5 h-3.5 text-amber-400" /> Platform Fee Comparison
           </span>
           <span className="text-emerald-400 font-mono font-bold">
-            {isAdmin ? '👑 100% Free' : 'Save up to 80%'}
+            {isAdmin ? '👑 100% Free' : 'Zero Upsell • 100% Bundled'}
           </span>
         </div>
         <div className="space-y-2 text-xs">
           <div className="flex justify-between items-center bg-gray-900/80 p-2 rounded border border-emerald-500/30">
             <span className="text-gray-300 font-medium flex items-center gap-1">
-              coiner.dev:
+              coiner.dev (Bundled):
               {isAdmin && <Crown className="w-3 h-3 text-amber-400" />}
             </span>
             <span className="font-mono text-emerald-400 font-bold">
-              {isAdmin ? '0.00 SOL (Gas Only)' : '0.10 SOL (Flat Fee)'}
+              {isAdmin ? '0.00 SOL (Gas Only)' : '0.15 SOL Flat Fee'}
             </span>
           </div>
           <div className="flex justify-between items-center bg-gray-950/40 p-2 rounded border border-gray-800 text-gray-400">
-            <span>Smithii / Orion / Others:</span>
-            <span className="font-mono text-red-400 line-through">0.20 – 0.50+ SOL</span>
+            <span>Smithii / Orion (with Revocations):</span>
+            <span className="font-mono text-red-400 line-through">0.40 – 0.80 SOL</span>
           </div>
         </div>
       </div>
