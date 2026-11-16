@@ -39,7 +39,7 @@
 | Stage | User goal | Entry point | Pages or screens | Exit and next stage |
 |---|---|---|---|---|
 | Discover & Inspect | Understand pricing transparency, verify zero platform markup or 0.15 SOL flat bundled fee, and review security standards. | Direct URL (`https://coiner.dev`) or Twitter/Telegram link. | Token Creator Studio | Configure & Preview |
-| Identity & Access | Authenticate as administrator via Clerk (`admin@alampintar.org`) or connect admin Solana wallet to activate 0.00 SOL platform fee exemption. | Header "Admin Sign In" button or wallet connect. | Admin Auth Overlay | Configure & Preview |
+| Identity & Access | Authenticate as administrator via Clerk (`admin@alampintar.org`) or connect admin Solana wallet to activate 0.00 SOL platform fee exemption. | Connect admin Solana wallet or navigate with `?admin`. | Admin Auth Overlay | Configure & Preview |
 | Configure & Preview | Define token parameters (name, symbol, supply, decimals, logo) and inspect real-time DEX card simulation. | Connected wallet on homepage. | Token Creator Studio | Authorize & Pay |
 | Authorize & Pay | Sign the single atomic transaction in Phantom/Solflare and settle platform fee (0.15 SOL Public Bundled / 0.00 SOL Admin). | "Create Token" CTA click. | Launch & Settlement Modal | Verify & Graduate |
 | Verify & Graduate | Copy mint address, verify metadata on Solscan, audit safety on RugCheck, and create Raydium CPMM pool. | On-chain confirmation. | Launch & Settlement Modal | Raydium pool creation or Solscan explorer |
@@ -56,7 +56,7 @@ flowchart LR
 
 ### 2.3 Alternate and edge-case paths
 
-- **Admin Authentication Flow:** Platform owner clicks "Admin Sign In" in the header, signs in via Clerk modal as `admin@alampintar.org` (or connects the admin Solana wallet), instantly toggling the studio into `👑 Admin Mode` with 0.00 SOL platform fee.
+- **Admin Authentication Flow:** Platform owner connects the admin Solana wallet (or navigates with `?admin` to sign in via Clerk modal as `admin@alampintar.org`), instantly toggling the studio into `👑 Admin Mode` with 0.00 SOL platform fee.
 - **Devnet Sandbox Testing:** User toggles the top-right network switch to "Devnet" to test deployment risk-free with faucet SOL before committing mainnet capital.
 - **RPC Rate-Limit Recovery:** If Solana public RPC nodes encounter heavy network congestion, the client falls back to cached rent values and informs the user to switch priority fees to Fast/Turbo.
 
@@ -125,7 +125,7 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 ### 4.6 Content and Voice
 
 - **Tone:** Sovereign, authoritative, transparent, and direct.
-- **Microcopy:** Explicit lamport-to-SOL figures, no ambiguous "gas estimates", clear distinction between raw on-chain rent and platform fees.
+- **Microcopy:** Punchy, degen-friendly Web3 voice. Clean 0.15 SOL flat fee summary with all 3 revocations included free.
 - **Error voice:** Actionable and transparent (e.g. "Transaction rejected by wallet" or "Image size exceeds 5MB limit").
 
 ---
@@ -164,7 +164,7 @@ Zero layout shifts (CLS = 0.00). All numeric currency metrics must render in tab
 ### Page: Token Creator Studio
 
 #### Purpose and Journey
-Primary interface where users configure their Solana token parameters, inspect live visual previews, review itemized network rent and platform fees, and initiate atomic deployment.
+Primary interface where users configure their Solana token parameters, inspect live visual previews, review clean all-inclusive service fee, and initiate atomic deployment.
 
 #### Layout and Hierarchy
 Two-column desktop grid (7:5 ratio): left column hosts the configuration form, right column hosts the sticky live preview and cost comparison cards. Header anchors global identity, admin widget, network switch, and wallet multi-button.
@@ -173,7 +173,7 @@ Two-column desktop grid (7:5 ratio): left column hosts the configuration form, r
 - Input fields: Name, Symbol, Decimals, Supply, Image Upload, Social Links.
 - Security toggles: Revoke Freeze, Revoke Mint, Immutable Metadata.
 - Priority selector: Normal, Fast, Turbo buttons.
-- Live cost breakdown card: Itemized on-chain rent, protocol fees, platform fee tier, total cost.
+- Total cost summary card: Clear 0.15 SOL flat service fee with 4 included security checkmarks.
 - States: Empty, Active typing, Wallet disconnected, Form invalid, Awaiting broadcast.
 
 #### Accessibility
@@ -194,12 +194,12 @@ Labels clearly mark required fields with emerald asterisks. Decimals input conta
 |---|---|---|
 | Fitts's Law | Primary "Create Token" CTA spans full form width (h-12 / 48px) directly under the cost summary. | [TokenForm.jsx#L569](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L569) button dimensions |
 | Visual Hierarchy | Bold 24px CardTitle with Sparkles icon dominates; secondary toggles use compact 14px labels. | CardTitle leading CardHeader in [TokenForm.jsx#L198](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L198) |
-| Von Restorff Effect | Emerald "Admin (0 SOL Fee)" badge or "Flat 0.15 SOL Fee (Bundled)" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx#L206](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L206) |
+| Von Restorff Effect | Emerald "Admin Mode" badge or "Flat 0.15 SOL (All-Inclusive)" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx#L257](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L257) |
 | Object Constancy | Header remains sticky at top-0 (`bg-gray-950/85 backdrop-blur-md`) through entire configuration journey. | Sticky header markup in [App.jsx#L36](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L36) |
 | Snapping | Priority fee buttons snap into an equal 3-column grid (`grid-cols-3 gap-2`). | Grid layout in [TokenForm.jsx#L491](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L491) |
 | Motion Blur | N/A: studio form elements update instantaneously on state changes without high-velocity spatial movement. | Form fields update in-place without animated layout translation |
 | Natural Mapping | Field ordering mirrors token metadata specification: Name -> Symbol -> Decimals -> Supply -> Media -> Security. | Sequential DOM structure in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
-| Tabular Figures | Rent breakdown uses `font-mono` ensuring aligned decimal points for 0.00107, 0.00149, 0.00410, and totals. | Monospace classes applied to all fee rows in [TokenForm.jsx#L523](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L523) |
+| Tabular Figures | Fee summary uses `font-mono` ensuring aligned decimal points for 0.15 SOL total. | Monospace classes applied to total fee in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
 | Animate Only the Delta | Only changed text nodes in the live preview update on keystrokes; parent card layout remains frozen. | Local React state updates in [LivePreview.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LivePreview.jsx) |
 | Inertia | Form scrolling employs native browser momentum with smooth boundary resistance. | Native OS touch-scroll momentum on parent `<main>` |
 | Multimodal Feedback | Connect wallet prompt visually disables the submit button while displaying explanatory helper text. | Dynamic disabled text and button styling in [TokenForm.jsx#L574](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L574) |
@@ -267,10 +267,10 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 Enables the platform owner to authenticate via Clerk (`admin@alampintar.org`) or verify their admin Solana wallet, instantly activating the 0.00 SOL platform fee exemption across the application.
 
 #### Layout and Hierarchy
-Compact header component embedded directly beside the network switcher and wallet button. When signed out, displays a sleek "Admin Sign In" button; when signed in as admin, displays a glowing emerald badge with gold Crown icon and user profile dropdown.
+Compact header component embedded directly beside the network switcher and wallet button. When signed out, stays unobtrusive and hidden from public visitors; when accessed via admin mode or signed in as admin, displays a glowing emerald badge with gold Crown icon and user profile dropdown.
 
 #### Components and States
-- Signed Out: "Admin Sign In" button with LogIn icon.
+- Signed Out: Hidden by default for public visitors, or discreet Sign In trigger if navigated with admin mode.
 - Signed In (Admin): Crown icon + "Admin" badge + "0 SOL Fee" pill + Clerk UserButton.
 - Signed In (Public User): User icon + username pill + Clerk UserButton.
 - Fallback State: If `VITE_CLERK_PUBLISHABLE_KEY` is omitted, cleanly evaluates admin status via connected Solana wallet without throwing errors.
@@ -285,7 +285,7 @@ On small screens (`< 640px`), the text label "Admin" is hidden, preserving the g
 Hover states feature a 150ms border and text color transition (`hover:border-gray-700 hover:text-white`).
 
 #### Content and Forms
-Concise microcopy: "Admin Sign In", "0 SOL Fee", with hover tooltips clarifying role verification mechanism.
+Concise microcopy: "0 SOL Fee", with hover tooltips clarifying role verification mechanism.
 
 #### Principle Adherence
 

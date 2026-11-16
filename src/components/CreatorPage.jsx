@@ -59,34 +59,37 @@ const CreatorPage = ({ network = 'devnet' }) => {
         <div className="text-center mb-10 max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-medium shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Sovereign Solana Creator • Flat 0.15 SOL Bundled Fee • 0.00 SOL Admin Mode
+            ⚡ Fast Solana Token Creator • Flat 0.15 SOL • All Revocations Included
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Launch Your Solana Token with{' '}
+            Launch Your Solana Token in{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
-              Maximum Sovereignty
+              Seconds
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-gray-400 leading-relaxed">
-            Create SPL & meme coins in one atomic transaction directly from your wallet.
-            Retain 100% of supply, revoke freeze authority for Raydium liquidity, and enjoy a flat 0.15 SOL fee with all revocations bundled 100% free—saving vs competitor add-on markups.
+            Create SPL & meme coins instantly. Flat 0.15 SOL with Revoke Freeze, Revoke Mint, and Immutable Metadata included 100% free. No hidden fees, Raydium LP ready.
           </p>
 
           {/* Quick Value Props */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-gray-300">
             <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              RugCheck A-Grade Compatible
+              RugCheck A-Grade Ready
             </span>
             <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
               <Zap className="w-4 h-4 text-amber-400" />
-              1-Click Atomic Deployment
+              Instant 1-Click Launch
             </span>
             <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
               <Coins className="w-4 h-4 text-cyan-400" />
-              Raydium CPMM / DLMM Ready
+              Raydium & Meteora LP Ready
+            </span>
+            <span className="flex items-center gap-1.5 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              100% Non-Custodial
             </span>
           </div>
         </div>

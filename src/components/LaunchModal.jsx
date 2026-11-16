@@ -103,7 +103,7 @@ const LaunchModal = ({
     ? `https://raydium.io/liquidity/create/?cluster=devnet`
     : `https://raydium.io/liquidity/create/`;
 
-  const tweetText = `Just created $${tokenData?.symbol || 'COIN'} on @Solana with zero platform markup using coiner.dev! 🚀\n\nMint: ${mintAddress}\n\n#Solana #MemeCoin`;
+  const tweetText = `Just created $${tokenData?.symbol || 'COIN'} on @Solana with 0.15 SOL flat fee using coiner.dev! 🚀\n\nMint: ${mintAddress}\n\n#Solana #MemeCoin`;
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     tweetText
   )}`;

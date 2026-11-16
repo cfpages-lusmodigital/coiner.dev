@@ -21,6 +21,7 @@
    - **Public Users:** **0.15 SOL** flat platform service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS metadata pinning bundled 100% free with zero upsell. Customization to retain any authority (non-standard configuration) incurs a **+0.05 SOL** fee per kept authority. Fees transfer atomically on-chain to the treasury wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`).
 3. **Atomic Settlement:** Token minting, account creation, supply distribution, Metaplex metadata registration, authority revocation, and fee transfer settle together or not at all.
 4. **Transparent Economics:** No hidden fees, no token percentage extraction, no smart contract lockup. The creator retains 100% of supply in their own wallet immediately.
+5. **Degen-First Public Voice & Strict Audience Separation:** Public-facing copy is written exclusively for the customer (fast, punchy, degen-friendly Web3 tone). Never expose internal admin credentials (`admin@alampintar.org`), Admin Mode perk details, or treasury wallet internals in public marketing copy, hero banners, or public FAQs. Never burden users with internal account byte sizes or rent accounting spreadsheets; public users only need to know their all-inclusive price: **0.15 SOL Flat Fee**.
 
 ---
 

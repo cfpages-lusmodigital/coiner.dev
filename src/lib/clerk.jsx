@@ -182,15 +182,17 @@ export function AdminAuthWidget() {
       </SignedIn>
 
       <SignedOut>
-        <SignInButton mode="modal">
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-gray-300 hover:text-white text-xs font-medium transition-all cursor-pointer shadow-sm"
-          >
-            <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Admin Sign In</span>
-          </button>
-        </SignInButton>
+        {typeof window !== 'undefined' && window.location.search.includes('admin') && (
+          <SignInButton mode="modal">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-400 hover:text-white text-xs font-medium transition-all cursor-pointer"
+            >
+              <LogIn className="w-3 h-3 text-emerald-400" />
+              <span>Admin Sign In</span>
+            </button>
+          </SignInButton>
+        )}
       </SignedOut>
     </div>
   );

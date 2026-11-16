@@ -114,11 +114,11 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
             </div>
           </div>
 
-          {/* RugCheck / Security Score Simulation */}
+          {/* Token Security Configuration */}
           <div className="w-full bg-emerald-950/30 border border-emerald-500/20 rounded-lg p-3 text-left space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4" /> RugCheck Predicted Score
+                <ShieldCheck className="w-4 h-4" /> Security Configuration
               </span>
               <span
                 className={`text-xs font-bold font-mono px-2 py-0.5 rounded border ${
@@ -132,8 +132,8 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
                 {formData.revokeFreeze !== false &&
                 formData.revokeMint !== false &&
                 formData.immutable !== false
-                  ? 'GOOD (A-GRADE)'
-                  : 'CAUTION (CUSTOM)'}
+                  ? 'RECOMMENDED SAFE'
+                  : 'CUSTOM SETTINGS'}
               </span>
             </div>
             <div className="text-[11px] text-gray-300 space-y-1 pt-1">
@@ -181,24 +181,24 @@ const LivePreview = ({ formData, advancedOptions = {} }) => {
         </CardContent>
       </Card>
 
-      {/* Cost Comparison Widget */}
+      {/* Price Comparison Widget */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-white flex items-center gap-1">
-            <Flame className="w-3.5 h-3.5 text-amber-400" /> Platform Fee Comparison
+            <Flame className="w-3.5 h-3.5 text-amber-400" /> Price Comparison
           </span>
-          <span className="text-emerald-400 font-mono font-bold">
-            {isAdmin ? '👑 100% Free' : 'Zero Upsell • 100% Bundled'}
+          <span className="text-emerald-400 font-mono font-bold text-xs">
+            Save up to 75%
           </span>
         </div>
         <div className="space-y-2 text-xs">
-          <div className="flex justify-between items-center bg-gray-900/80 p-2 rounded border border-emerald-500/30">
-            <span className="text-gray-300 font-medium flex items-center gap-1">
-              coiner.dev (Bundled):
-              {isAdmin && <Crown className="w-3 h-3 text-amber-400" />}
+          <div className="flex justify-between items-center bg-gray-900/90 p-2.5 rounded border border-emerald-500/30">
+            <span className="text-gray-200 font-medium flex items-center gap-1.5">
+              coiner.dev (All-Inclusive):
+              {isAdmin && <Crown className="w-3.5 h-3.5 text-amber-400" />}
             </span>
-            <span className="font-mono text-emerald-400 font-bold">
-              {isAdmin ? '0.00 SOL (Gas Only)' : '0.15 SOL Flat Fee'}
+            <span className="font-mono text-emerald-400 font-bold text-sm">
+              {isAdmin ? '0.00 SOL' : '0.15 SOL Flat'}
             </span>
           </div>
           <div className="flex justify-between items-center bg-gray-950/40 p-2 rounded border border-gray-800 text-gray-400">

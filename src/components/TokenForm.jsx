@@ -1,6 +1,7 @@
 // src/components/TokenForm.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +19,7 @@ import {
   Sparkles,
   Coins,
   Crown,
+  Wallet,
 } from 'lucide-react';
 import { createSolanaToken, estimateRentCosts } from '@/lib/solana';
 import { useAdminStatus, calculatePlatformFee, BASE_PUBLIC_FEE_SOL, CUSTOMIZATION_SURCHARGE_SOL } from '@/lib/clerk';
@@ -40,6 +42,7 @@ const TokenForm = ({
 }) => {
   const { connection } = useConnection();
   const wallet = useWallet();
+  const { setVisible } = useWalletModal();
   const { connected, publicKey } = wallet;
   const { isAdmin, adminRoleReason } = useAdminStatus();
 
@@ -247,8 +250,8 @@ const TokenForm = ({
             </CardTitle>
             <CardDescription className="text-gray-400 text-sm mt-0.5">
               {isAdmin
-                ? 'Admin mode active (admin@alampintar.org). Zero platform fees (gas-only).'
-                : 'Atomic Solana token deployment at flat 0.15 SOL bundled fee. Zero upsell, all revocations included.'}
+                ? '👑 Admin mode active: Zero platform fee applied.'
+                : 'Deploy your SPL or meme coin in 60 seconds with all security revocations included.'}
             </CardDescription>
           </div>
           {isAdmin ? (
@@ -257,11 +260,11 @@ const TokenForm = ({
               className="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-bold shadow-sm"
             >
               <Crown className="w-3.5 h-3.5 text-amber-400" />
-              <span>Admin: 0 SOL Fee</span>
+              <span>Admin Mode</span>
             </span>
           ) : (
             <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-gray-900 border border-gray-800 text-gray-300">
-              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.15 SOL Fee (Bundled)
+              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.15 SOL (All-Inclusive)
             </span>
           )}
         </div>
@@ -582,82 +585,89 @@ const TokenForm = ({
           </div>
         </div>
 
-        {/* Live Rent Cost Breakdown */}
-        <div className="bg-gray-950 rounded-xl p-4 border border-gray-800/90 space-y-2">
-          <div className="flex items-center justify-between text-xs pb-2 border-b border-gray-800">
-            <span className="text-gray-400 font-mono uppercase tracking-wide">
-              Cost Breakdown (On-Chain Rent & Fee)
+        {/* Total Cost Summary Card */}
+        <div className="bg-gray-950/90 rounded-xl p-4 border border-gray-800/90 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-400 font-mono uppercase tracking-wider font-semibold">
+              Total Service Fee
             </span>
-            <span className="text-emerald-400 font-mono font-bold">100% Transparent</span>
+            <span className="text-emerald-400 font-mono text-xs font-bold">
+              All-Inclusive Bundle
+            </span>
           </div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between text-gray-400">
-              <span>SPL Mint Account (82 bytes rent):</span>
-              <span className="font-mono">{rentCosts.mintRentSol} SOL</span>
-            </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Creator Token ATA (165 bytes rent):</span>
-              <span className="font-mono">{rentCosts.ataRentSol} SOL</span>
-            </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Metaplex Metadata PDA (~679 bytes rent):</span>
-              <span className="font-mono">{rentCosts.metadataRentSol} SOL</span>
-            </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Metaplex Protocol Creation Fee:</span>
-              <span className="font-mono">
-                {rentCosts.metaplexProtocolSol || (isMainnet ? '0.01000' : '0.00000')} SOL
-                <span className="text-[10px] text-gray-500 ml-1">
-                  {isMainnet ? '(Mainnet)' : '(Devnet)'}
-                </span>
-              </span>
-            </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Network Gas & Priority Fee Buffer:</span>
-              <span className="font-mono">~{rentCosts.networkGasSol || '0.00010'} SOL</span>
-            </div>
-            <div className="flex justify-between pt-1 border-t border-gray-800/60 items-center">
-              <span className="font-medium text-gray-200">coiner.dev Flat Base Fee:</span>
-              {isAdmin ? (
-                <span className="font-mono text-emerald-400 font-bold flex items-center gap-1">
-                  <Crown className="w-3 h-3 text-amber-400" /> 0.00000 SOL (Admin Exemption)
-                </span>
-              ) : (
-                <span className="font-mono text-white font-semibold">0.15000 SOL (All Revocations Included)</span>
-              )}
-            </div>
-            {customizationCount > 0 && !isAdmin && (
-              <div className="flex justify-between text-amber-300 text-xs">
-                <span>Customization Surcharge ({customizationCount} retained {customizationCount === 1 ? 'authority' : 'authorities'}):</span>
-                <span className="font-mono">+{(customizationCount * 0.05).toFixed(5)} SOL</span>
+
+          <div className="flex items-baseline justify-between pt-1">
+            <div>
+              <div className="text-3xl font-extrabold text-white font-mono flex items-center gap-2">
+                {isAdmin ? '0.00 SOL' : `${currentPlatformFeeSol.toFixed(2)} SOL`}
+                {isAdmin && (
+                  <span className="text-xs font-normal text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                    <Crown className="w-3 h-3 text-amber-400" /> Admin Mode
+                  </span>
+                )}
               </div>
-            )}
-            <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-gray-800 items-center">
-              <span>Total Estimated Network Cost:</span>
-              <span className="font-mono text-emerald-400 text-base font-extrabold">
-                {rentCosts.estimatedTotalSol} SOL
-              </span>
+              <p className="text-[11px] text-gray-400 mt-1">
+                {isAdmin
+                  ? '👑 Platform fee waived (0.00 SOL)'
+                  : customizationCount === 0
+                  ? 'Flat fee • Zero upsells • All revocations included'
+                  : `0.15 SOL flat base + ${(customizationCount * 0.05).toFixed(2)} SOL customization`}
+              </p>
+            </div>
+            <div className="text-right text-[11px] text-gray-500 font-mono">
+              + network gas ~0.015 SOL
+            </div>
+          </div>
+
+          {/* Included Features Pill Grid */}
+          <div className="pt-3 border-t border-gray-800/80 grid grid-cols-2 gap-2 text-[11px] text-gray-300">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Token Creation & Supply</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>IPFS Metadata Pinning</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Freeze Authority Revocation</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Mint Authority Revocation</span>
             </div>
           </div>
         </div>
 
         {/* Primary Action Button */}
         <div className="pt-2">
-          <Button
-            onClick={handleCreateToken}
-            disabled={!connected || !isFormValid}
-            className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {!connected
-              ? 'Connect Solana Wallet to Launch'
-              : !isFormValid
-              ? 'Fill in Token Name, Symbol & Supply'
-              : `Create $${(formData.symbol || formData.ticker || 'COIN').toUpperCase()} (~${rentCosts.estimatedTotalSol} SOL)`}
-          </Button>
+          {!connected ? (
+            <Button
+              type="button"
+              onClick={() => setVisible(true)}
+              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+            >
+              <Wallet className="w-5 h-5 mr-2" /> Connect Wallet to Launch
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleCreateToken}
+              disabled={!isFormValid}
+              className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {!isFormValid
+                ? 'Fill in Token Name, Symbol & Supply'
+                : isAdmin
+                ? `Create $${(formData.symbol || formData.ticker || 'COIN').toUpperCase()} (0.00 SOL)`
+                : `Create $${(formData.symbol || formData.ticker || 'COIN').toUpperCase()} (${currentPlatformFeeSol.toFixed(2)} SOL)`}
+            </Button>
+          )}
           <p className="text-[11px] text-center text-gray-500 mt-2">
             {isAdmin
-              ? '👑 Admin Mode: 0.00 SOL platform markup applied. Raw Solana rent & gas only.'
-              : 'Flat 0.15 SOL bundled fee (all 3 revocations included free). Customization to retain any authority incurs +0.05 SOL.'}
+              ? '👑 Admin Mode: 0.00 SOL platform fee applied.'
+              : '⚡ Instant 1-click launch. Ready for Raydium liquidity pool in under 60 seconds.'}
           </p>
         </div>
       </CardContent>

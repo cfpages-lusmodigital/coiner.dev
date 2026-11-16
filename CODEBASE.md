@@ -36,7 +36,7 @@ coiner.dev/
 │   │   ├── LaunchModal.jsx      # Multi-step progress modal, explorer & DEX links
 │   │   ├── LivePreview.jsx      # Real-time DEX / Explorer preview & fee comparison
 │   │   ├── StepGuide.jsx        # 5-step interactive deployment guide
-│   │   ├── TokenForm.jsx        # Token configuration form, priority selector, live cost breakdown
+│   │   ├── TokenForm.jsx        # Token configuration form, priority selector, clean cost summary card
 │   │   └── ui/                  # Radix UI + Tailwind component library
 │   ├── lib/
 │   │   ├── clerk.jsx            # Unified Clerk authentication & admin exemption layer

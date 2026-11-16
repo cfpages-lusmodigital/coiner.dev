@@ -98,14 +98,14 @@ const App = () => {
                     </span>
                     <span>•</span>
                     <span className="text-emerald-400 font-medium">
-                      0.15 SOL Flat Public Fee (Bundled) • 0.00 SOL Admin Exemption
+                      Flat 0.15 SOL • All Revocations Bundled Free
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    coiner.dev is an open-source sovereign utility designed to eliminate predatory third-party platform markups on Solana.
-                    Public creators pay a flat, transparent 0.15 SOL service fee with all 3 security revocations (Freeze, Mint, Update) and IPFS pinning bundled 100% free (saving vs competitors charging 0.40–0.80 SOL for the same bundle),
-                    while the platform administrator (admin@alampintar.org / Admin Wallet) launches gas-only with zero platform fees.
-                    Non-standard customizations (retaining authorities) incur a +0.05 SOL fee. Users retain 100% of their minted supply in their own non-custodial wallet.
+                  <p className="text-xs text-gray-500 leading-relaxed max-w-2xl mx-auto">
+                    coiner.dev is the fast, non-custodial Solana token creator.
+                    Launch compliant SPL and meme coins in 60 seconds with a flat 0.15 SOL fee.
+                    Freeze Authority Revocation, Mint Authority Revocation, and Immutable Metadata are included 100% free with zero upsell.
+                    You retain 100% of your minted supply directly in your wallet.
                   </p>
                   <p className="text-xs text-gray-600 font-mono">
                     © {new Date().getFullYear()} coiner.dev • Sovereign Solana Infrastructure
