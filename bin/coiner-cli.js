@@ -64,11 +64,14 @@ import {
 } from '../src/lib/pump.js';
 import { refineCoinNarrative } from '../src/lib/ai-bridge.js';
 import {
+  createScoutStagingRun,
   scanTrendingTokens,
   stageScoutedProfile,
-  detectImageFormat,
-  downloadAndValidateImage,
 } from '../src/lib/scout.js';
+import { SCOUT_UPLOAD_TOKEN_FORMAT } from '../src/lib/ipfsMetadata.js';
+import { publishScoutMetadata } from '../src/lib/scoutMetadata.js';
+
+const SCOUT_DRY_RUN_METADATA_URI = 'https://example.invalid/scout-dry-run/sample-token-metadata-for-local-tests.json';
 
 // Program constants
 export const METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -269,8 +272,8 @@ OPTIONS:
   --no-ai-bridge         Disable AI Bridge cognitive layer; use direct heuristic templates
   --limit <number>       Max candidate coins to scout (default: 5)
   --min-boosts <number>  Minimum DexScreener community boost count filter (default: 0)
-  --staging-dir <path>   Directory to store scouted graphics and metadata.json
-  --auto-launch          Pipes highest-ranked scouted candidate directly into create
+  --staging-dir <path>   Operator-owned parent directory for a new scout run
+  --auto-launch          Create from the top candidate. Live auto-pinning requires COINER_SCOUT_UPLOAD_TOKEN
   --dry-run              Simulate full transaction assembly & MTU check without broadcasting
   --json                 Output structured JSON response on stdout/stderr
   --help, -h             Show this help message
@@ -341,6 +344,23 @@ const PARSE_OPTIONS = {
   'import-clipboard': { type: 'boolean', default: false },
   force: { type: 'boolean', default: false },
 };
+
+function validateMetadataUri(value) {
+  const uri = (value || '').trim();
+  if (!uri) throw new Error('Provide a published metadata JSON URL with --metadata-uri.');
+  const bytes = getUtf8ByteLength(uri);
+  if (bytes > 200) throw new Error(`Metadata URI exceeds the 200 UTF-8 byte limit (got ${bytes} bytes).`);
+  let url;
+  try {
+    url = new URL(uri);
+  } catch {
+    throw new Error('Metadata URI must be a valid HTTP(S) URL.');
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+    throw new Error('Metadata URI must use HTTP(S) without credentials.');
+  }
+  return uri;
+}
 
 /**
  * Helper to parse and strictly validate positive decimal numbers (Sol finding F10 / P09)
@@ -932,12 +952,13 @@ export async function runWatchLoop({
 /**
  * Main execution entrypoint
  */
-async function run() {
-  const isJsonRequested = process.argv.includes('--json');
+export async function run(args = process.argv.slice(2)) {
+  const isJsonRequested = args.includes('--json');
 
   let parsed;
   try {
     parsed = parseArgs({
+      args,
       options: PARSE_OPTIONS,
       allowPositionals: true,
       strict: true,
@@ -1405,6 +1426,8 @@ try {
     return;
   }
 
+  let scoutUpload;
+
   // Command: scout
   if (command === 'scout') {
     try {
@@ -1416,6 +1439,15 @@ try {
         console.log(`\n🔎 Scanning Solana meme trends on DexScreener (limit: ${limit})...`);
       }
 
+      const autoPin = values['auto-launch'] && !values['dry-run'] && values['metadata-uri'] === undefined;
+      let uploadToken;
+      if (autoPin) {
+        uploadToken = process.env.COINER_SCOUT_UPLOAD_TOKEN;
+        delete process.env.COINER_SCOUT_UPLOAD_TOKEN;
+        if (!uploadToken || !SCOUT_UPLOAD_TOKEN_FORMAT.test(uploadToken)) {
+          throw new Error('Set COINER_SCOUT_UPLOAD_TOKEN or provide an explicit --metadata-uri.');
+        }
+      }
       const trending = await scanTrendingTokens({ limit, minBoosts });
 
       if (trending.length === 0) {
@@ -1432,8 +1464,7 @@ try {
       }
 
       const candidates = [];
-      const timestamp = Date.now();
-      const baseStagingDir = values['staging-dir'] || path.join(process.cwd(), 'staged-coins', String(timestamp));
+      const stagingRun = createScoutStagingRun(values['staging-dir'] || path.join(process.cwd(), 'staged-coins'));
 
       for (let i = 0; i < trending.length; i++) {
         const item = trending[i];
@@ -1459,8 +1490,7 @@ try {
           };
         }
 
-        // Pass baseStagingDir and index; stageScoutedProfile enforces path containment and safe directory IDs (S01)
-        const staged = await stageScoutedProfile(item, refined, baseStagingDir, i + 1);
+        const staged = await stageScoutedProfile(item, refined, stagingRun, i + 1, autoPin && i === 0);
         candidates.push({
           rank: i + 1,
           original: item,
@@ -1515,7 +1545,7 @@ try {
         }
 
         // Fail-closed if image validation failed and no explicit metadata URI provided (S04)
-        if (!top.staged.imageValid && !values['metadata-uri']) {
+        if (!top.staged.imageValid && values['metadata-uri'] === undefined) {
           throw new Error(`Auto-launch aborted: Downloaded image failed validation for $${top.staged.symbol}. Provide an explicit --metadata-uri or select another candidate.`);
         }
 
@@ -1523,9 +1553,10 @@ try {
         values.symbol = top.staged.symbol;
         values.description = top.staged.description;
         
-        // Use verified Metaplex standard JSON metadata Data URI, NEVER raw image URL (S04)
-        if (!values['metadata-uri']) {
-          values['metadata-uri'] = top.staged.metadataUri;
+        if (autoPin) {
+          scoutUpload = { staged: top.staged, token: uploadToken };
+        } else if (values['dry-run'] && values['metadata-uri'] === undefined) {
+          values['metadata-uri'] = SCOUT_DRY_RUN_METADATA_URI;
         }
 
         // Preserve operator CLI thresholds over AI suggestions if explicitly provided (S05)
@@ -1602,22 +1633,7 @@ try {
       }
       const decimals = Number(decStr);
 
-      const metadataUri = (values['metadata-uri'] || '').trim();
-      if (!metadataUri) {
-        throw new Error('Metadata URI (--metadata-uri <url>) is required to initialize on-chain Metaplex metadata. Please upload metadata to IPFS/Arweave first.');
-      }
-      const uriBytes = getUtf8ByteLength(metadataUri);
-      if (uriBytes > 200) {
-        throw new Error(`Metadata URI exceeds Metaplex limit of 200 UTF-8 bytes (got ${uriBytes} bytes).`);
-      }
-      try {
-        const parsedUrl = new URL(metadataUri);
-        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-          throw new Error('Protocol must be http or https');
-        }
-      } catch (urlErr) {
-        throw new Error(`Invalid metadata URI format: "${metadataUri}". Must be a valid HTTP/HTTPS URL.`);
-      }
+      let metadataUri = scoutUpload ? '' : validateMetadataUri(values['metadata-uri']);
 
       const rawSupply = calculateRawAmount(values.supply, decimals);
 
@@ -1670,6 +1686,13 @@ try {
             `Please fund your wallet with at least ${rent.estimatedTotalSol} SOL before launching.`
           );
         }
+      }
+
+      if (scoutUpload) {
+        const { staged, token } = scoutUpload;
+        metadataUri = validateMetadataUri(await publishScoutMetadata(staged, {
+          name, symbol, decimals, supply: values.supply, token,
+        }));
       }
 
       // Generate Mint Keypair & derive PDAs

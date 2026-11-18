@@ -234,6 +234,20 @@ Every finding in the ledger (H01–H05, M01–M10) has been resolved in code, ve
 
 ## 5. Hardening & Edge-Case Audit Ledger — COINER-SCOUT-AI-1
 
+### Current S01–S04 implementation
+
+This section supersedes earlier S01–S04 certification claims. Local checks cover transport and filesystem controls, both Pages upload entry points, and the CLI handoff. Live Pinata, gateway retrieval and signing require separate verification.
+
+| Requirement | Implementation and verification |
+|---|---|
+| S01 | `createScoutStagingRun(parent)` checks directory components for link redirection and creates an exclusive `run-*` directory. `stageScoutedProfile(candidate, refined, run, index, keepImage)` creates each candidate directory and file exclusively. The CLI requires an operator-owned parent. Local files are previews. Only the selected candidate's validated image bytes are retained for automatic publication. |
+| S02, S03 | `fetchPublicBytes(url, maxBytes, signal)` in `src/lib/scout.js` resolves both IP families with a cancellable resolver, rejects nonpublic results, and gives Node a fixed address through the socket lookup callback. Node retains the URL's hostname for HTTP and TLS. Responses with redirects, unsafe status, encoding or size are rejected and closed. The scan uses one signal across the two feed requests and the pair request. Body caps are 1 MiB per market response and 5 MiB per image. |
+| S04 | `publishScoutMetadata(staged, fields)` posts a bounded multipart upload to `/api/metadata`. That route authenticates `COINER_SCOUT_UPLOAD_TOKEN` before reading the body, then calls `handleUploadMetadata(context, { requireImage: true })`. The browser keeps its existing `/api/upload-metadata` entry point. Both share multipart limits, Pinata timeouts and CIDv0 validation in `src/lib/ipfsMetadata.js`. Authenticated scout publishing requires a raster signature, pins the image, then constructs JSON with the image URI and pins that JSON. The CLI validates both returned CIDs and checks the 200-byte URI limit before signing. A failed second pin can leave the already pinned image available for reuse. |
+
+Run `node --test scripts/scout-hardening.test.mjs` for the maintained S01–S04 fixtures. They replace the historical scratch checks for these four items. The CLI fixture uses ephemeral dummy keys, mocks DNS, HTTP and RPC, and stops before signing. The Pages function and Vite builds use temporary output directories.
+
+Deployment requires injecting the same `COINER_SCOUT_UPLOAD_TOKEN` into Pages Secrets and the operator CLI, alongside the existing server-side Pinata configuration. Generate a random 32-byte token and encode it as unpadded base64url. Dry runs and operator-supplied metadata URIs do not need this token. The route returns 503 before accessing Pinata if its secret is absent.
+
 **2026-11-17 — Round 2, Codex / Sol (mcodex): REVISION REQUIRED; certification withheld.** Current independent dispositions: one source-closed (S06), eleven partial (S01–S05, S07–S12), one open (S13). The implementation-authored RESOLVED table retained below is historical remediation testimony, superseded by this re-check. Source closure does not imply actual target-runtime verification. The separate [exit Round 2 response](scratch/sol_coiner_exit_review_response.md) is not recertified by this scout review.
 
 ### Round 2 current evidence and acceptance ledger

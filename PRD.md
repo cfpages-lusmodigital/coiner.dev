@@ -509,26 +509,33 @@ The CLI loads signing authority in strict order:
 
 ---
 
-## 15. End-to-End Autonomous Pipeline (`coiner-cli scout --auto-launch --auto-exit`)
+## 15. Scout, Staging and SPL Auto-launch
 
 The autonomous pipeline executes across 5 distinct phases:
 
 1. **Scout & Filter**: `coiner-cli scout` polls live trends and selects the highest momentum candidate meeting volume/boost thresholds.
 2. **AI Bridge Synthesis**: Ingests narrative context into `ai-bridge-codev` to synthesize optimized token name, ticker, and viral lore.
-3. **Asset Staging**: Downloads trending meme graphics, validates format, formats Metaplex metadata, and computes a short content-hash-bound HTTP(S) metadata URI (66 bytes, <= 200 bytes).
-4. **Autonomous Mint**: Executes `coiner-cli create` (simulated in `--dry-run`; on-chain broadcast requires explicit keypair and network confirmation).
-5. **Autonomous Exit Watcher**: Transitions to `coiner-cli watch` monitoring curve dynamics and executing TP1 (2.0x, 50% sell), TP2 (3.5x, 25% sell), and Stop-Loss (0.70x, 100% sell).
+3. **Asset Staging**: Creates a fresh run under the operator-owned staging parent. Writes the validated raster image and a local metadata preview into an exclusive candidate directory. The preview is for inspection before publication.
+4. **Published Metadata and SPL Mint**: For live auto-launch without an explicit URI, send the validated image and token fields to the authenticated Pages proxy. The proxy pins the image and then constructs and pins Metaplex JSON. Create uses the returned metadata URI only after both CIDs validate. A validation or publishing failure stops before signing. An explicit `--metadata-uri` uses the operator's pre-published JSON. A dry run skips pinning and uses the explicit URI or a reserved simulation URI.
+5. **Exit Watcher**: Live `watch` operates on an existing supported Pump.fun mint. SPL creation rejects live `--auto-exit`.
 
 ---
 
 ## 16. Security Invariants, Adversarial Hardening & Quality Gate Specifications
 
+### S01–S04 remediation acceptance
+
+- ✅ Implemented: Create exclusive staging runs and candidate outputs beneath a verified, operator-owned directory.
+- ✅ Implemented: Limit market and image response bodies and include DNS and both market request phases in the applicable deadlines.
+- ✅ Implemented: Reject nonpublic destinations and redirects. Keep the HTTPS hostname for certificate verification and connect to a validated address.
+- ✅ Implemented: Require a validated image and an authenticated pinning response before automatic live creation. Dry runs and explicitly supplied URIs bypass automatic pinning.
+- ⏳ Deployment verification: Configure the Pages secret and inject the matching operator token before testing the deployed publishing path.
+
 ### 16.1 Threat Model & Isolation Boundaries
 1. **Third-Party Market Data Ingestion**:
-   - Symbols and remote strings are strictly sanitized before reaching the filesystem. File paths are restricted to safe alphanumeric characters `[a-z0-9_-]` with explicit path containment assertion against the staging root directory and `lstatSync` reparse/symlink rejection (S01).
-   - External image downloads are subject to a strict public-origin policy: rejecting RFC 1918 private IPv4, loopback `127.0.0.0/8`, link-local `169.254.0.0/16`, CGNAT `100.64.0.0/10`, IPv6 unique-local/link-local/IPv4-mapped, URL userinfo credentials, and HTTP redirects disabled via `redirect: 'error'` to prevent SSRF bypass (S02, S03).
-   - Image downloads stream chunk-by-chunk with a strict 5 MB cap and full-body deadline cancellation (S02).
-   - Upstream market data queries enforce bounded JSON streaming (max 2 MB) and restrict pair membership strictly to the queried 30-address batch (S08).
+   - Staging rejects linked directory components and uses exclusive runs, sanitized candidate names, and exclusive file creation. The staging parent must be writable only by the operator and trusted administrators (S01).
+   - Scout HTTP(S) requests reject credentials, nonstandard ports, nonpublic IPv4 and IPv6 addresses, mixed public and nonpublic DNS results, and redirects. Connections use a validated address and retain the original HTTP host and TLS hostname (S03).
+   - Images have a 5 MiB body cap and a 12-second default DNS-to-body deadline. Each market JSON response is capped at 1 MiB, with a shared 12-second default deadline for feed and pair requests. Rejected responses are closed. Pair membership is restricted to the queried batch of at most 30 addresses (S02, S08).
 2. **AI Cascade Cognitive Boundary**:
    - The AI Bridge cognitive engine output is parsed with strict type guards (`typeof data.text === 'string'`) and isolated process execution (S07).
    - String fields are enforced within Solana protocol UTF-8 limits (32 bytes name, 10 bytes symbol) using code-point iteration that never introduces Unicode replacement characters `\uFFFD` (S05).
@@ -539,7 +546,7 @@ The autonomous pipeline executes across 5 distinct phases:
    - Non-custodial 64-byte Ed25519 secret key files are validated for strict byte integer ranges `[0..255]`. Public addresses provide zero debit authority.
    - Unified discovery hierarchy ensures consistent keypair selection across all CLI commands (`wallet`, `create`, `watch`) with explicit non-zero exit codes on discovery or RPC failure (S11).
 4. **Metaplex On-Chain Standards**:
-   - Metadata URIs are strictly formatted as valid HTTP/HTTPS URLs bounded to <= 200 UTF-8 bytes to fit Solana transaction MTU and Metaplex on-chain struct constraints (S04).
+   - Metadata URIs are HTTP(S) URLs without credentials and at most 200 UTF-8 bytes. Automatic publishing requires the operator's `COINER_SCOUT_UPLOAD_TOKEN` and a matching Pages secret. Pinata credentials stay server-side. The authenticated route requires a verified raster signature, enforces byte limits before parsing, and validates the provider's image and JSON CIDv0 responses (S04).
 
 
 

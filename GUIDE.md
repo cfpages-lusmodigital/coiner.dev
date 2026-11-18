@@ -148,12 +148,13 @@ To consistently win in the Solana trenches, you must stop viewing the market sol
   - Confirm current liquid SOL balance (0.15 SOL minimum required for creation + early bid).
   - Understand non-custodial guarantee: without private key, no wallet can ever be debited.
 - [x] **1.4 Autonomous Trend Scanner & AI Bridge Cognitive Refinement**:
-  - Run `node bin/coiner-cli.js scout --limit 3` to scan DexScreener/Pump.fun breakout trends.
+  - Run `node bin/coiner-cli.js scout --limit 3` to scan DexScreener trends.
   - Connect to AI Bridge (`ai-bridge-codev`) to generate viral meme lore, punchy ticker, and virality score.
-  - Ingest trending image automatically; review staged metadata in `./staged-coins/`.
+  - Review images and local metadata previews in the new `staged-coins/run-*/` directory.
 - [ ] **1.5 Launch Coin #1 (The Pilot)**:
-  - Deploy via `node bin/coiner-cli.js scout --limit 1 --auto-launch --auto-exit --tp1 2.0 --tp2 3.5 --sl 0.70`.
-  - Ingests highest-momentum meme, constructs atomic transaction, and transitions seamlessly to exit watcher.
+  - Preview transaction assembly with `node bin/coiner-cli.js scout --limit 1 --auto-launch --dry-run`. Dry runs skip IPFS pinning and broadcasting.
+  - For live SPL auto-launch without an explicit `--metadata-uri`, provision the same random base64url token as `COINER_SCOUT_UPLOAD_TOKEN` in Cloudflare Pages Secrets and in the operator's secret store. Inject it into the CLI process. Pinata credentials belong only in Pages Secrets.
+  - To separate staging and launch, upload the selected image and metadata first, then provide the published JSON with `--metadata-uri <url>`. Use `watch` separately for an existing supported Pump.fun mint.
   - Total outlay: **~0.10 SOL**. Remaining cash: **~0.90 SOL**.
 - [ ] **1.5a Sniper Bait & Block-0 Settlement Verification**:
   - Verify that the dev buy landed in Block 0 at genesis curve price.

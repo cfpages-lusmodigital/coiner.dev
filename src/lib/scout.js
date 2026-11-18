@@ -11,60 +11,117 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Buffer } from 'node:buffer';
-import { createHash } from 'node:crypto';
+import http from 'node:http';
+import https from 'node:https';
+import { Resolver } from 'node:dns/promises';
+import { BlockList, isIP } from 'node:net';
 
 export const DEXSCREENER_PROFILES_API = 'https://api.dexscreener.com/token-profiles/latest/v1';
 export const DEXSCREENER_BOOSTS_API = 'https://api.dexscreener.com/token-boosts/top/v1';
 export const DEXSCREENER_TOKENS_API = 'https://api.dexscreener.com/latest/dex/tokens/';
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB hard limit
+export const MAX_API_BYTES = 1 * 1024 * 1024; // 1 MB hard limit for API responses
 
-/**
- * Validates whether a URL is a safe public HTTP/HTTPS URL and not a private/loopback address (S03)
- */
-export function isSafePublicUrl(urlString) {
-  if (!urlString || typeof urlString !== 'string') return false;
-  try {
-    const u = new URL(urlString.trim());
-    if (!['http:', 'https:'].includes(u.protocol)) return false;
+const restrictedIpv4 = new BlockList();
+for (const [address, prefix] of [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
+  ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
+  ['192.88.99.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15],
+  ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4],
+]) {
+  restrictedIpv4.addSubnet(address, prefix);
+}
 
-    // Reject URLs with embedded credentials (userinfo)
-    if (u.username || u.password) return false;
+const globalIpv6 = new BlockList();
+globalIpv6.addSubnet('2000::', 3, 'ipv6');
+const restrictedIpv6 = new BlockList();
+for (const [address, prefix] of [
+  ['2001::', 23], ['2001:db8::', 32], ['2002::', 16], ['3fff::', 20],
+]) {
+  restrictedIpv6.addSubnet(address, prefix, 'ipv6');
+}
 
-    const hostname = u.hostname.toLowerCase();
+function isPublicAddress(address) {
+  const family = isIP(address);
+  if (family === 4) return !restrictedIpv4.check(address);
+  return family === 6 && globalIpv6.check(address, 'ipv6') && !restrictedIpv6.check(address, 'ipv6');
+}
 
-    // Loopback & local address rejection
-    if (
-      hostname === 'localhost' ||
-      hostname.endsWith('.localhost') ||
-      hostname.endsWith('.local') ||
-      hostname === '0.0.0.0' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1' ||
-      hostname === '[::1]' ||
-      hostname === '::' ||
-      hostname === '[::]'
-    ) {
-      return false;
-    }
-
-    // IPv4 loopback (127.0.0.0/8) & current network (0.0.0.0/8)
-    if (/^(127\.|0\.)/.test(hostname)) return false;
-
-    // RFC 1918 private IPv4 rejection
-    if (/^10\./.test(hostname)) return false;
-    if (/^192\.168\./.test(hostname)) return false;
-    if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) return false;
-    if (/^169\.254\./.test(hostname)) return false; // Link-local
-    if (/^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(hostname)) return false; // CGNAT (100.64.0.0/10)
-
-    // IPv6 Unique Local (fc00::/7), Link-Local (fe80::/10), IPv4-mapped loopback/private
-    if (/^\[?f[cd][0-9a-f]{2}:/i.test(hostname) || /^\[?fe[89ab][0-9a-f]:/i.test(hostname)) return false;
-    if (/^\[?::ffff:(127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/i.test(hostname)) return false;
-
-    return true;
-  } catch {
-    return false;
+async function resolvePublicAddress(hostname, signal) {
+  signal.throwIfAborted();
+  if (isIP(hostname)) {
+    if (isPublicAddress(hostname)) return hostname;
+    throw new Error('Scout destination is not a public IP address.');
   }
+
+  const resolver = new Resolver();
+  const cancel = () => resolver.cancel();
+  signal.addEventListener('abort', cancel, { once: true });
+  try {
+    const results = await Promise.allSettled([resolver.resolve4(hostname), resolver.resolve6(hostname)]);
+    signal.throwIfAborted();
+    const addresses = [];
+    for (const result of results) {
+      if (result.status === 'fulfilled') addresses.push(...result.value);
+      else if (!['ENODATA', 'ENOTFOUND'].includes(result.reason.code)) throw new Error('Scout DNS resolution failed.');
+    }
+    if (!addresses.length || addresses.some((address) => !isPublicAddress(address))) {
+      throw new Error('Scout DNS resolution did not return exclusively public addresses.');
+    }
+    return addresses[0];
+  } finally {
+    signal.removeEventListener('abort', cancel);
+  }
+}
+
+async function fetchPublicBytes(urlString, maxBytes, signal) {
+  const url = new URL(urlString);
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.port ||
+      /(^|\.)(localhost|local)\.?$/.test(hostname)) {
+    throw new Error('Scout requires a public HTTP(S) URL without credentials or a custom port.');
+  }
+  const address = await resolvePublicAddress(hostname, signal);
+  const transport = url.protocol === 'https:' ? https : http;
+  const response = await new Promise((resolve, reject) => {
+    const request = transport.request(url, {
+      agent: false,
+      autoSelectFamily: false,
+      lookup: (_hostname, _options, callback) => callback(null, address, isIP(address)),
+      signal,
+      headers: { 'User-Agent': 'coiner-scout/1.0', 'Accept-Encoding': 'identity' },
+    }, resolve);
+    request.on('error', reject);
+    request.end();
+  });
+
+  try {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw new Error(`Scout request failed: HTTP ${response.statusCode}`);
+    }
+    if (response.headers['content-encoding'] && response.headers['content-encoding'] !== 'identity') {
+      throw new Error('Scout received an unsupported content encoding.');
+    }
+    if (Number(response.headers['content-length']) > maxBytes) {
+      throw new Error(`Scout response exceeded ${maxBytes} bytes.`);
+    }
+    const chunks = [];
+    let receivedBytes = 0;
+    for await (const chunk of response) {
+      signal.throwIfAborted();
+      receivedBytes += chunk.length;
+      if (receivedBytes > maxBytes) throw new Error(`Scout response exceeded ${maxBytes} bytes.`);
+      chunks.push(chunk);
+    }
+    signal.throwIfAborted();
+    return Buffer.concat(chunks, receivedBytes);
+  } finally {
+    response.destroy();
+  }
+}
+
+async function fetchMarketJson(url, signal) {
+  return JSON.parse((await fetchPublicBytes(url, MAX_API_BYTES, signal)).toString('utf8'));
 }
 
 /**
@@ -111,73 +168,16 @@ export function detectImageFormat(buffer) {
  * Downloads and validates an image from URL with streamed byte limiting and full-body deadline (S02, S03)
  */
 export async function downloadAndValidateImage(imageUrl, timeoutMs = 12000) {
-  if (!isSafePublicUrl(imageUrl)) {
-    throw new Error(`Rejected unsafe or non-public image URL: "${imageUrl}"`);
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) coiner-scout/1.0',
-      },
-      signal: controller.signal,
-      redirect: 'error',
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch image: HTTP ${res.status}`);
-    }
-
-    // Check optional Content-Length header early
-    const contentLength = Number(res.headers.get('content-length'));
-    if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
-      throw new Error(`Image Content-Length (${(contentLength / 1024 / 1024).toFixed(2)} MB) exceeds 5 MB limit`);
-    }
-
-    // Stream body and enforce MAX_IMAGE_BYTES chunk-by-chunk to avoid full memory allocation (S02)
-    const reader = res.body?.getReader();
-    const chunks = [];
-    let receivedBytes = 0;
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          receivedBytes += value.length;
-          if (receivedBytes > MAX_IMAGE_BYTES) {
-            reader.cancel();
-            throw new Error(`Image download exceeded 5 MB limit during streaming`);
-          }
-          chunks.push(value);
-        }
-      }
-    }
-
-    const buffer = Buffer.concat(chunks);
-    const fmt = detectImageFormat(buffer);
-    if (!fmt.valid) {
-      throw new Error(fmt.error);
-    }
-
-    return {
-      buffer,
-      mimeType: fmt.mimeType,
-      ext: fmt.ext,
-      sizeBytes: buffer.length,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
+  const buffer = await fetchPublicBytes(imageUrl, MAX_IMAGE_BYTES, AbortSignal.timeout(timeoutMs));
+  const format = detectImageFormat(buffer);
+  if (!format.valid) throw new Error(format.error);
+  return { buffer, mimeType: format.mimeType, ext: format.ext, sizeBytes: buffer.length };
 }
 
 /**
- * Fetches token pair information for given addresses from DexScreener with full-body deadline (S02, S08, S09)
+ * Fetches token pair information for given addresses from DexScreener with streaming limits (S02)
  */
-export async function fetchDexScreenerPairs(tokenAddresses, timeoutMs = 10000) {
+export async function fetchDexScreenerPairs(tokenAddresses, timeoutMs = 10000, signal = AbortSignal.timeout(timeoutMs)) {
   if (!Array.isArray(tokenAddresses) || tokenAddresses.length === 0) return { ok: true, pairs: [] };
   const validAddresses = tokenAddresses.filter((a) => typeof a === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a));
   if (validAddresses.length === 0) return { ok: true, pairs: [] };
@@ -185,26 +185,12 @@ export async function fetchDexScreenerPairs(tokenAddresses, timeoutMs = 10000) {
   const chunk = validAddresses.slice(0, 30).join(',');
   const url = `${DEXSCREENER_TOKENS_API}${chunk}`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 coiner-scout/1.0' },
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      return { ok: false, status: res.status, error: `DexScreener pairs API returned HTTP ${res.status}`, pairs: [] };
-    }
-
-    const data = await res.json();
+    const data = await fetchMarketJson(url, signal);
     const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
     return { ok: true, pairs };
   } catch (err) {
-    return { ok: false, error: err.name === 'AbortError' ? `Timeout after ${timeoutMs}ms` : err.message, pairs: [] };
-  } finally {
-    clearTimeout(timer);
+    return { ok: false, error: err.message, pairs: [] };
   }
 }
 
@@ -221,28 +207,15 @@ export async function scanTrendingTokens(options = {}) {
   const limit = options.limit || 5;
   const minBoosts = options.minBoosts != null ? Number(options.minBoosts) : 0;
   const timeoutMs = options.timeoutMs || 12000;
+  const signal = AbortSignal.timeout(timeoutMs);
 
   const [profilesRes, boostsRes] = await Promise.allSettled([
-    fetch(DEXSCREENER_PROFILES_API, {
-      headers: { 'User-Agent': 'Mozilla/5.0 coiner-scout/1.0' },
-      signal: AbortSignal.timeout(timeoutMs),
-    }).then(async (r) => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      return Array.isArray(data) ? data : [];
-    }),
-    fetch(DEXSCREENER_BOOSTS_API, {
-      headers: { 'User-Agent': 'Mozilla/5.0 coiner-scout/1.0' },
-      signal: AbortSignal.timeout(timeoutMs),
-    }).then(async (r) => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      return Array.isArray(data) ? data : [];
-    }),
+    fetchMarketJson(DEXSCREENER_PROFILES_API, signal),
+    fetchMarketJson(DEXSCREENER_BOOSTS_API, signal)
   ]);
 
-  const rawProfiles = profilesRes.status === 'fulfilled' ? profilesRes.value : [];
-  const rawBoosts = boostsRes.status === 'fulfilled' ? boostsRes.value : [];
+  const rawProfiles = Array.isArray(profilesRes.value) ? profilesRes.value : [];
+  const rawBoosts = Array.isArray(boostsRes.value) ? boostsRes.value : [];
 
   if (profilesRes.status === 'rejected' && boostsRes.status === 'rejected') {
     throw new Error(`Upstream market data unavailable: Profiles (${profilesRes.reason?.message}); Boosts (${boostsRes.reason?.message})`);
@@ -280,7 +253,7 @@ export async function scanTrendingTokens(options = {}) {
   // Fetch detailed pair metadata for queried batch of up to 30 addresses (S08)
   const batch = addresses.slice(0, 30);
   const batchSet = new Set(batch);
-  const pairsResult = await fetchDexScreenerPairs(batch, timeoutMs);
+  const pairsResult = await fetchDexScreenerPairs(batch, timeoutMs, signal);
   if (!pairsResult.ok && pairsResult.pairs.length === 0) {
     throw new Error(`Failed to fetch token pair metadata: ${pairsResult.error}`);
   }
@@ -352,58 +325,56 @@ export async function scanTrendingTokens(options = {}) {
   return results;
 }
 
-/**
- * Stages a scouted token profile with strict path containment (S01),
- * fail-closed image validation (S04), and Metaplex RFC 2397 Data URI generation.
- */
-export async function stageScoutedProfile(candidate, refinedAiData, baseStagingDir, index = 1) {
-  // Enforce baseStagingDir resolution and create if missing
-  const resolvedBase = path.resolve(baseStagingDir);
-  if (!fs.existsSync(resolvedBase)) {
-    fs.mkdirSync(resolvedBase, { recursive: true });
+function verifyStagingDirectory(directory) {
+  const stat = fs.lstatSync(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink() ||
+      path.relative(directory, fs.realpathSync.native(directory)) !== '') {
+    throw new Error('Scout staging requires an ordinary directory without linked components.');
   }
+}
 
-  // Sanitize symbol into safe alphanumeric directory name (S01, P02, P03)
+export function createScoutStagingRun(baseStagingDir) {
+  const base = path.resolve(baseStagingDir);
+  const root = path.parse(base).root;
+  let current = root;
+  verifyStagingDirectory(current);
+  for (const component of path.relative(root, base).split(path.sep).filter(Boolean)) {
+    current = path.join(current, component);
+    try {
+      fs.mkdirSync(current, { mode: 0o700 });
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+    verifyStagingDirectory(current);
+  }
+  const run = fs.mkdtempSync(path.join(base, 'run-'));
+  verifyStagingDirectory(run);
+  return run;
+}
+
+export async function stageScoutedProfile(candidate, refinedAiData, stagingRun, index = 1, keepImage = false) {
+  if (!Number.isSafeInteger(index) || index < 1) throw new Error('Invalid scout candidate index.');
+  const base = path.resolve(stagingRun);
   const rawSymbol = String(candidate.symbol || 'coin').toLowerCase();
   const safeSymbol = rawSymbol.replace(/[^a-z0-9_-]/g, '_').slice(0, 16) || 'coin';
-  const subDirName = `${index}_${safeSymbol}`;
-  const stagingDir = path.resolve(resolvedBase, subDirName);
+  const stagingDir = path.resolve(base, `${index}_${safeSymbol}`);
+  if (path.dirname(stagingDir) !== base) throw new Error('Scout candidate path is outside the staging run.');
 
-  // Assert path containment strictly within baseStagingDir
-  if (!stagingDir.startsWith(resolvedBase + path.sep)) {
-    throw new Error(`Directory traversal attempt detected: "${subDirName}" escapes "${resolvedBase}"`);
-  }
-
-  // Reject reparse points / symlinks in staging path (S01)
-  if (fs.existsSync(stagingDir)) {
-    const stat = fs.lstatSync(stagingDir);
-    if (stat.isSymbolicLink()) {
-      throw new Error(`Reparse point or symlink detected in staging path: "${stagingDir}"`);
-    }
-  } else {
-    fs.mkdirSync(stagingDir, { recursive: true });
-  }
-
-  // 1. Download and validate image (fail-closed, S04)
-  let localImagePath = '';
-  let imageMime = 'image/png';
-  let imageExt = 'png';
-  let imageValid = false;
-
-  if (candidate.imageUrl && isSafePublicUrl(candidate.imageUrl)) {
+  let image = null;
+  if (candidate.imageUrl) {
     try {
-      const img = await downloadAndValidateImage(candidate.imageUrl);
-      imageExt = img.ext;
-      imageMime = img.mimeType; // Preserve exact detected MIME: image/jpeg (S12)
-      localImagePath = path.join(stagingDir, `icon.${img.ext}`);
-      fs.writeFileSync(localImagePath, img.buffer);
-      imageValid = true;
-    } catch (imgErr) {
-      imageValid = false;
-      // Do not swallow; record reason
-      localImagePath = '';
+      image = await downloadAndValidateImage(candidate.imageUrl);
+    } catch {
+      // A candidate can still be inspected locally. Automatic publishing requires a validated image.
     }
   }
+  verifyStagingDirectory(base);
+  fs.mkdirSync(stagingDir, { mode: 0o700 });
+  verifyStagingDirectory(stagingDir);
+
+  const imageFilename = image ? `icon.${image.ext}` : '';
+  const localImagePath = image ? path.join(stagingDir, imageFilename) : '';
+  if (image) fs.writeFileSync(localImagePath, image.buffer, { flag: 'wx', mode: 0o600 });
 
   const name = refinedAiData?.name || candidate.name;
   const symbol = refinedAiData?.symbol || candidate.symbol;
@@ -414,42 +385,37 @@ export async function stageScoutedProfile(candidate, refinedAiData, baseStagingD
     name,
     symbol,
     description,
-    image: candidate.imageUrl,
+    image: imageFilename,
     attributes: [
       { trait_type: 'Source Meta', value: candidate.name },
       { trait_type: 'Virality Score', value: String(refinedAiData?.viralityScore || 75) },
       { trait_type: 'Derivative Angle', value: refinedAiData?.derivativeAngle || 'Trench Momentum' },
     ],
     properties: {
-      files: candidate.imageUrl ? [{ uri: candidate.imageUrl, type: imageMime }] : [],
+      files: image ? [{ uri: imageFilename, type: image.mimeType }] : [],
       category: 'image',
     },
     extensions: {
-      website: candidate.websiteUrl || '',
-      twitter: candidate.twitterUrl || '',
-      telegram: candidate.telegramUrl || '',
+      website: candidate.websiteUrl || 'https://coiner.dev',
+      twitter: candidate.twitterUrl || 'https://x.com/coiner_dev',
+      telegram: candidate.telegramUrl || 'https://t.me/coiner_portal',
     },
   };
 
   const metadataPath = path.join(stagingDir, 'metadata.json');
-  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
-
-  // Generate short content-hash-bound HTTP(S) URI compliant with Metaplex 200-byte on-chain limit (S04)
-  const metadataJsonBytes = Buffer.from(JSON.stringify(metadata, null, 2), 'utf8');
-  const contentHash = createHash('sha256').update(metadataJsonBytes).digest('hex').slice(0, 44);
-  const metadataUri = `https://ipfs.io/ipfs/Qm${contentHash}`;
+  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), { encoding: 'utf8', flag: 'wx', mode: 0o600 });
 
   return {
     stagingDir,
     localImagePath,
     metadataPath,
     metadata,
-    metadataUri, // Short HTTP/HTTPS JSON metadata URI (66 bytes, <= 200 bytes)
+    image: keepImage ? image : null,
     name,
     symbol,
     description,
     imageUrl: candidate.imageUrl,
-    imageValid,
+    imageValid: Boolean(image),
     twitterUrl: candidate.twitterUrl,
     telegramUrl: candidate.telegramUrl,
     websiteUrl: candidate.websiteUrl,

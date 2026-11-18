@@ -2,6 +2,8 @@
 // Stateless IPFS Pinning & Metadata Proxy for coiner.dev
 // Zero server wallets, zero private keys, zero server transaction fees.
 
+import { BodyTooLargeError, pinnedFileUri, readBoundedBody, readPinningJson } from '../../src/lib/ipfsMetadata.js';
+
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
@@ -142,31 +144,50 @@ export async function onRequestOptions(context) {
   return new Response(null, { headers: cors });
 }
 
-export async function onRequestPost(context) {
+export function onRequestPost(context) {
+  return handleUploadMetadata(context);
+}
+
+async function pinFile(file, filename, authHeaders) {
+  const form = new FormData();
+  form.append('file', file, filename);
+  form.append('pinataOptions', JSON.stringify({ cidVersion: 0 }));
+  const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+    method: 'POST',
+    headers: authHeaders,
+    body: form,
+    redirect: 'error',
+    signal: AbortSignal.timeout(15000),
+  });
+  return pinnedFileUri((await readPinningJson(response))?.IpfsHash);
+}
+
+export async function handleUploadMetadata(context, { requireImage = false } = {}) {
   const { request, env } = context;
   const cors = getCorsHeaders(request);
 
   try {
-    // 1. Content-Length Pre-Check (Reject oversized bodies before parsing)
-    const contentLength = parseInt(request.headers.get('content-length') || '0', 10);
-    if (contentLength > MAX_TOTAL_BODY_SIZE) {
-      return jsonResponse(413, {
-        success: false,
-        error: `Payload too large. Request body exceeds maximum allowed size of 5.5MB.`,
-      }, cors);
-    }
-
-    // 2. Content-Type Check
     const contentType = request.headers.get('content-type') || '';
-    if (!contentType.includes('multipart/form-data')) {
+    if (!/^multipart\/form-data\s*;/i.test(contentType)) {
       return jsonResponse(400, {
         success: false,
         error: 'Expected multipart/form-data request.',
       }, cors);
     }
 
-    // 3. Parse Multipart Form Data
-    const formData = await request.formData();
+    let formData;
+    try {
+      const bytes = await readBoundedBody(request, MAX_TOTAL_BODY_SIZE, AbortSignal.timeout(15000));
+      formData = await new Response(bytes, { headers: { 'Content-Type': contentType } }).formData();
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) {
+        return jsonResponse(413, { success: false, error: 'Multipart request exceeds 5.5 MiB.' }, cors);
+      }
+      if (error.name === 'TimeoutError') {
+        return jsonResponse(408, { success: false, error: 'Multipart upload exceeded its deadline.' }, cors);
+      }
+      return jsonResponse(400, { success: false, error: 'Invalid multipart request.' }, cors);
+    }
 
     // 4. Strict Field Multiplicity and Key Validation
     const seenFields = new Set();
@@ -264,8 +285,8 @@ export async function onRequestPost(context) {
     }
 
     // 11. Image Verification (Magic Bytes)
-    let verifiedMime = 'image/png';
-    if (imageFile && typeof imageFile === 'object' && imageFile.size > 0) {
+    let verifiedMime = '';
+    if (imageFile !== null || requireImage) {
       try {
         verifiedMime = await verifyRasterImage(imageFile);
       } catch (imgErr) {
@@ -293,39 +314,13 @@ export async function onRequestPost(context) {
       : { pinata_api_key: pinataApiKey, pinata_secret_api_key: pinataSecretKey };
 
     let imageUri = '';
-    let metadataUri = '';
-
-    // 13. Pin Image to IPFS (with 15s timeout deadline)
-    if (imageFile && typeof imageFile === 'object' && imageFile.size > 0) {
-      const imgFormData = new FormData();
-      imgFormData.append('file', imageFile, imageFile.name || 'token_logo.png');
-
-      let imgRes;
+    if (verifiedMime) {
       try {
-        imgRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-          method: 'POST',
-          headers: authHeaders,
-          body: imgFormData,
-          signal: AbortSignal.timeout(15000),
-        });
-      } catch (fetchErr) {
-        console.error('Pinata image fetch timeout/network error:', fetchErr);
-        return jsonResponse(502, {
-          success: false,
-          error: 'Upstream IPFS storage gateway timeout while uploading image. Please retry.',
-        }, cors);
+        const type = verifiedMime.slice('image/'.length);
+        imageUri = await pinFile(imageFile.slice(0, imageFile.size, verifiedMime), `token_logo.${type}`, authHeaders);
+      } catch {
+        return jsonResponse(502, { success: false, error: 'IPFS image pinning failed.' }, cors);
       }
-
-      if (!imgRes.ok) {
-        console.error('Pinata image upload failed with status:', imgRes.status);
-        return jsonResponse(502, {
-          success: false,
-          error: 'Upstream IPFS storage gateway failed while pinning image.',
-        }, cors);
-      }
-
-      const imgData = await imgRes.json();
-      imageUri = `https://gateway.pinata.cloud/ipfs/${imgData.IpfsHash}`;
     }
 
     // 14. Build Standard Metaplex Metadata V3 JSON
@@ -349,39 +344,13 @@ export async function onRequestPost(context) {
       },
     };
 
-    // 15. Pin Metadata JSON to IPFS (with 15s timeout deadline)
-    const metaFormData = new FormData();
-    const metaBlob = new Blob([JSON.stringify(metadataPayload, null, 2)], {
-      type: 'application/json',
-    });
-    metaFormData.append('file', metaBlob, 'metadata.json');
-
-    let metaRes;
+    let metadataUri;
     try {
-      metaRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-        method: 'POST',
-        headers: authHeaders,
-        body: metaFormData,
-        signal: AbortSignal.timeout(15000),
-      });
-    } catch (fetchErr) {
-      console.error('Pinata metadata fetch timeout/network error:', fetchErr);
-      return jsonResponse(502, {
-        success: false,
-        error: 'Upstream IPFS storage gateway timeout while uploading metadata JSON. Please retry.',
-      }, cors);
+      const metaBlob = new Blob([JSON.stringify(metadataPayload, null, 2)], { type: 'application/json' });
+      metadataUri = await pinFile(metaBlob, 'metadata.json', authHeaders);
+    } catch {
+      return jsonResponse(502, { success: false, error: 'IPFS metadata pinning failed.' }, cors);
     }
-
-    if (!metaRes.ok) {
-      console.error('Pinata metadata upload failed with status:', metaRes.status);
-      return jsonResponse(502, {
-        success: false,
-        error: 'Upstream IPFS storage gateway failed while pinning metadata JSON.',
-      }, cors);
-    }
-
-    const metaData = await metaRes.json();
-    metadataUri = `https://gateway.pinata.cloud/ipfs/${metaData.IpfsHash}`;
 
     return jsonResponse(200, {
       success: true,
