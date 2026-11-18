@@ -42,19 +42,21 @@ const steps = [
 
 const StepGuide = () => {
   return (
-    <Card className="w-full max-w-4xl mx-auto bg-gray-900 border-gray-800">
+    <Card className="shiny-card w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-center text-3xl font-bold text-white">How to Create Your Solana Token</CardTitle>
+        <CardTitle className="text-center text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          How to Create Your Solana Token
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {steps.map((step, index) => (
-            <div key={index} className="flex flex-col items-center text-center p-6 bg-gray-800 rounded-lg">
-              <div className="mb-4">
+            <div key={index} className="shiny-pill flex flex-col items-center text-center p-6 rounded-2xl hover:border-amber-400/40 transition-all duration-300">
+              <div className="mb-4 p-3 rounded-full bg-zinc-900 border border-zinc-800 shadow-xs">
                 {step.icon}
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
-              <p className="text-sm text-gray-400">{step.description}</p>
+              <h3 className="text-base font-bold text-white mb-2">{step.title}</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">{step.description}</p>
             </div>
           ))}
         </div>

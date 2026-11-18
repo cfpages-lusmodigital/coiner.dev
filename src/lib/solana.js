@@ -12,18 +12,8 @@ import {
   ComputeBudgetProgram,
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
-import {
-  MINT_SIZE,
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  createInitializeMintInstruction,
-  createAssociatedTokenAccountIdempotentInstruction,
-  createMintToInstruction,
-  createSetAuthorityInstruction,
-  AuthorityType,
-  getAssociatedTokenAddressSync,
-} from '@solana/spl-token';
-import { getCreateMetadataAccountV3InstructionDataSerializer } from '@metaplex-foundation/mpl-token-metadata';
+
+export const MINT_SIZE = 82;
 
 export const METADATA_PROGRAM_ID = new PublicKey(
   'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s'
@@ -55,23 +45,40 @@ export function getMetadataPDA(mintPublicKey) {
 
 /**
  * Checks if a transaction signature was confirmed on-chain
+ * Returns tagged status contract: { kind: 'confirmed' | 'pending' | 'failed' | 'not_found' | 'rpc_unavailable', ... }
  */
 export async function checkSignatureStatus(connection, signature) {
-  if (!signature) return false;
+  if (!signature) return { kind: 'not_found', value: null };
   try {
     const status = await connection.getSignatureStatus(signature, {
       searchTransactionHistory: true,
     });
-    if (status && status.value) {
-      if (status.value.err) {
-        return false;
-      }
-      return status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized';
+    if (!status || !status.value) {
+      return { kind: 'not_found', value: null };
     }
-    return false;
+    if (status.value.err) {
+      return {
+        kind: 'failed',
+        error: status.value.err,
+        confirmationStatus: status.value.confirmationStatus,
+      };
+    }
+    if (status.value.confirmationStatus === 'processed') {
+      return { kind: 'pending', confirmationStatus: 'processed' };
+    }
+    if (
+      status.value.confirmationStatus === 'confirmed' ||
+      status.value.confirmationStatus === 'finalized'
+    ) {
+      return {
+        kind: 'confirmed',
+        confirmationStatus: status.value.confirmationStatus,
+      };
+    }
+    return { kind: 'pending', confirmationStatus: status.value.confirmationStatus };
   } catch (err) {
     console.warn('Error checking signature status:', err);
-    return false;
+    return { kind: 'rpc_unavailable', error: err?.message || String(err) };
   }
 }
 
@@ -153,6 +160,8 @@ export async function estimateRentCosts(
     const onChainRentLamports = mintRent + ataRent + metadataRent + metaplexProtocolLamports + networkGasBuffer;
 
     return {
+      source: 'live',
+      canAuthorizeSpend: true,
       mintRentSol: (Number(mintRent) / 1e9).toFixed(5),
       ataRentSol: (Number(ataRent) / 1e9).toFixed(5),
       metadataRentSol: (Number(metadataRent) / 1e9).toFixed(5),
@@ -171,6 +180,8 @@ export async function estimateRentCosts(
     const baseTotal = rentBase + fee;
     const fallbackLamports = BigInt(Math.round(baseTotal * 1e9));
     return {
+      source: 'fallback',
+      canAuthorizeSpend: false,
       mintRentSol: '0.00107',
       ataRentSol: '0.00149',
       metadataRentSol: '0.00410',
@@ -248,6 +259,23 @@ export async function createSolanaToken({
   const userPublicKey = wallet.publicKey;
 
   onProgress('preparing', 'Calculating rent-exemption and preparing keypairs...');
+
+  // U10 Performance optimization: Load SPL Token & Metaplex only when assembling transaction
+  const [splToken, metaplex] = await Promise.all([
+    import('@solana/spl-token'),
+    import('@metaplex-foundation/mpl-token-metadata'),
+  ]);
+  const {
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    createInitializeMintInstruction,
+    createAssociatedTokenAccountIdempotentInstruction,
+    createMintToInstruction,
+    createSetAuthorityInstruction,
+    AuthorityType,
+    getAssociatedTokenAddressSync,
+  } = splToken;
+  const { getCreateMetadataAccountV3InstructionDataSerializer } = metaplex;
 
   // 1. Generate keypair for new mint
   const mintKeypair = Keypair.generate();
@@ -486,8 +514,8 @@ export async function createSolanaToken({
     }
   } catch (confirmErr) {
     // If confirmation timed out or threw, check on-chain status before declaring failure
-    const isConfirmed = await checkSignatureStatus(connection, signature);
-    if (isConfirmed) {
+    const statusResult = await checkSignatureStatus(connection, signature);
+    if (statusResult?.kind === 'confirmed') {
       onProgress('success', 'Token successfully created and confirmed on Solana!');
       return {
         success: true,

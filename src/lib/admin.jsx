@@ -89,11 +89,11 @@ export function AdminStatusBadge() {
   return (
     <div
       title="Admin Wallet Recognized • 0.00 SOL Platform Fee"
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-semibold shadow-sm animate-in fade-in duration-200"
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-950/60 border border-amber-500/40 text-amber-300 text-xs font-sans font-semibold shadow-xs animate-in fade-in duration-200"
     >
       <Crown className="w-3.5 h-3.5 text-amber-400" />
       <span className="hidden sm:inline">Admin</span>
-      <span className="text-[10px] text-emerald-400 font-bold">0 SOL Fee</span>
+      <span className="text-[10px] text-amber-300 font-bold">0 SOL Fee</span>
     </div>
   );
 }

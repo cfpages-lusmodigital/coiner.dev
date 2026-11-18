@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { BorderBeam } from '@/components/ui/border-beam';
 import {
   Upload,
   ShieldCheck,
@@ -35,10 +36,10 @@ const PRIORITY_FEE_MAP = {
 };
 
 const STEPS = [
-  { id: 1, name: 'Basics', label: 'Token Basics', icon: Sparkles },
-  { id: 2, name: 'Media', label: 'Media & Story', icon: Upload },
-  { id: 3, name: 'Security', label: 'Security & Speed', icon: ShieldCheck },
-  { id: 4, name: 'Review', label: 'Review & Launch', icon: Rocket },
+  { id: 1, name: 'Basics', label: 'Token Basics', description: 'Token identity & supply', icon: Sparkles },
+  { id: 2, name: 'Media', label: 'Media & Story', description: 'Logo & community lore', icon: Upload },
+  { id: 3, name: 'Security', label: 'Security & Speed', description: 'On-chain security & speed', icon: ShieldCheck },
+  { id: 4, name: 'Review', label: 'Review & Launch', description: 'Pre-flight verification', icon: Rocket },
 ];
 
 const TokenForm = ({
@@ -171,8 +172,8 @@ const TokenForm = ({
     const hasName = formData.name && formData.name.trim().length > 0 && formData.name.trim().length <= 32;
     const symbolStr = (formData.symbol || formData.ticker || '').trim();
     const hasSymbol = symbolStr.length > 0 && symbolStr.length <= 10;
-    const decimalsNum = parseInt(String(formData.decimals ?? '6'), 10);
-    const validDecimals = !Number.isNaN(decimalsNum) && decimalsNum >= 0 && decimalsNum <= 9;
+    const rawDecStr = String(formData.decimals ?? '6').trim();
+    const validDecimals = /^[0-9]$/.test(rawDecStr);
     const supplyNum = Number(String(formData.supply || '').replace(/,/g, ''));
     const validSupply = !Number.isNaN(supplyNum) && supplyNum > 0;
     return hasName && hasSymbol && validDecimals && validSupply;
@@ -247,12 +248,9 @@ const TokenForm = ({
       uploadData.append('name', formData.name.trim());
       uploadData.append('symbol', (formData.symbol || formData.ticker).trim().toUpperCase());
       uploadData.append('description', (formData.description || '').trim());
-      const safeDecimalsVal =
-        formData.decimals != null && formData.decimals !== ''
-          ? parseInt(String(formData.decimals), 10)
-          : 6;
-
-      uploadData.append('decimals', String(Number.isNaN(safeDecimalsVal) ? 6 : safeDecimalsVal));
+      const rawDecStr = String(formData.decimals ?? '6').trim();
+      const safeDecimalsVal = /^[0-9]$/.test(rawDecStr) ? Number(rawDecStr) : 6;
+      uploadData.append('decimals', String(safeDecimalsVal));
       uploadData.append('supply', String(formData.supply || '1000000000').replace(/,/g, ''));
       uploadData.append('website', (formData.website || '').trim());
       uploadData.append('twitter', (formData.twitter || '').trim());
@@ -324,15 +322,18 @@ const TokenForm = ({
   const progressPercentage = (currentStep / STEPS.length) * 100;
 
   return (
-    <Card className="w-full bg-gray-900/90 border border-gray-800 shadow-2xl backdrop-blur-sm overflow-hidden">
+    <Card className="shiny-card relative w-full shadow-2xl overflow-hidden rounded-2xl">
+      {/* Liquid Gold Border Beam (Magic UI) */}
+      <BorderBeam size={300} duration={14} colorFrom="#f59e0b" colorTo="#fbbf24" borderWidth={1.5} />
+
       {/* Top Header */}
-      <CardHeader className="border-b border-gray-800/80 pb-4">
+      <CardHeader className="border-b border-zinc-800/80 pb-4 relative z-10">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-2xl font-extrabold text-white flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-emerald-400" /> Token Generator
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-amber-400" /> Token Generator
             </CardTitle>
-            <CardDescription className="text-gray-400 text-sm mt-0.5">
+            <CardDescription className="text-zinc-400 text-sm mt-0.5">
               {isAdmin
                 ? '👑 Admin mode active: Zero platform fee applied across all configurations.'
                 : 'Deploy your SPL or meme coin in 4 easy steps with all security revocations included.'}
@@ -341,14 +342,14 @@ const TokenForm = ({
           {isAdmin ? (
             <span
               title={adminRoleReason || 'Admin exemption active'}
-              className="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 font-bold shadow-sm"
+              className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1 rounded-full bg-amber-950/60 border border-amber-500/40 text-amber-300 font-bold shadow-xs"
             >
               <Crown className="w-3.5 h-3.5 text-amber-400" />
               <span>Admin Mode (0 SOL)</span>
             </span>
           ) : (
-            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-mono px-2.5 py-1 rounded-full bg-gray-900 border border-gray-800 text-gray-300">
-              <Coins className="w-3.5 h-3.5 text-emerald-400" /> Flat 0.15 SOL Bundle
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-sans px-2.5 py-1 rounded-full shiny-pill text-zinc-300">
+              <Coins className="w-3.5 h-3.5 text-amber-400" /> Flat 0.15 SOL Bundle
             </span>
           )}
         </div>
@@ -356,9 +357,9 @@ const TokenForm = ({
         {/* Visual Stepper Progression Bar */}
         <div className="mt-4 pt-2">
           {/* Progress Bar Line */}
-          <div className="w-full bg-gray-950 h-1.5 rounded-full overflow-hidden border border-gray-800/80 mb-3">
+          <div className="w-full bg-gray-950 h-1.5 rounded-full overflow-hidden border border-zinc-800/80 mb-3">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-300 ease-out shadow-sm shadow-emerald-500/50"
+              className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 transition-all duration-300 ease-out shadow-xs shadow-amber-500/40"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
@@ -378,24 +379,24 @@ const TokenForm = ({
                   aria-current={isActive ? 'step' : undefined}
                   className={`flex items-center justify-center sm:justify-start gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 ring-1 ring-emerald-500/30'
+                      ? 'bg-amber-950/60 border border-amber-500/60 text-amber-200 ring-1 ring-amber-500/30'
                       : isPassed
-                      ? 'bg-gray-950 border border-emerald-900/40 text-emerald-400/90 hover:border-emerald-700/50'
+                      ? 'bg-gray-950 border border-amber-900/40 text-amber-400/90 hover:border-amber-700/50'
                       : 'bg-gray-950/60 border border-gray-800/60 text-gray-500 hover:text-gray-400'
                   }`}
                 >
                   <span
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-mono shrink-0 ${
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-sans font-bold shrink-0 ${
                       isActive
-                        ? 'bg-emerald-500 text-black font-bold'
+                        ? 'bg-amber-400 text-black'
                         : isPassed
-                        ? 'bg-emerald-900 text-emerald-300'
+                        ? 'bg-amber-950 text-amber-300 border border-amber-500/30'
                         : 'bg-gray-800 text-gray-400'
                     }`}
                   >
                     {isPassed ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : s.id}
                   </span>
-                  <span className="sr-only sm:not-sr-only font-mono truncate">{s.name}</span>
+                  <span className="sr-only sm:not-sr-only font-sans truncate">{s.name}</span>
                 </button>
               );
             })}
@@ -403,10 +404,10 @@ const TokenForm = ({
 
           {/* Current Step Descriptor */}
           <div className="flex items-center justify-between text-xs text-gray-400 mt-2 px-1">
-            <span className="font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+            <span className="font-sans text-amber-400 font-semibold flex items-center gap-1.5">
               Step {currentStep} of 4: {STEPS[currentStep - 1].label}
             </span>
-            <span className="text-[11px] text-gray-500 font-mono">
+            <span className="text-[11px] text-gray-400 font-sans">
               {currentStep === 1 && 'Token identity & supply'}
               {currentStep === 2 && 'Logo & community lore'}
               {currentStep === 3 && 'On-chain security & speed'}
@@ -434,8 +435,8 @@ const TokenForm = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs font-medium text-gray-300 flex justify-between">
-                  <span>Token Name <span className="text-emerald-400">*</span></span>
-                  <span className="text-[10px] text-gray-500 font-mono">{formData.name?.length || 0}/32</span>
+                  <span>Token Name <span className="text-amber-400">*</span></span>
+                  <span className="text-[10px] text-gray-400 font-sans">{formData.name?.length || 0}/32</span>
                 </Label>
                 <Input
                   id="name"
@@ -444,7 +445,7 @@ const TokenForm = ({
                   value={formData.name || ''}
                   onChange={handleInputChange}
                   maxLength={32}
-                  className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-emerald-500"
+                  className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-amber-400 font-sans"
                   required
                   autoFocus
                 />
@@ -452,8 +453,8 @@ const TokenForm = ({
 
               <div className="space-y-1.5">
                 <Label htmlFor="symbol" className="text-xs font-medium text-gray-300 flex justify-between">
-                  <span>Symbol / Ticker <span className="text-emerald-400">*</span></span>
-                  <span className="text-[10px] text-gray-500 font-mono">{(formData.symbol || formData.ticker)?.length || 0}/10</span>
+                  <span>Symbol / Ticker <span className="text-amber-400">*</span></span>
+                  <span className="text-[10px] text-gray-400 font-sans">{(formData.symbol || formData.ticker)?.length || 0}/10</span>
                 </Label>
                 <Input
                   id="symbol"
@@ -462,7 +463,7 @@ const TokenForm = ({
                   value={formData.symbol || formData.ticker || ''}
                   onChange={handleInputChange}
                   maxLength={10}
-                  className="bg-gray-950 border-gray-800 font-mono text-emerald-400 uppercase placeholder-gray-600 focus:border-emerald-500"
+                  className="bg-gray-950 border-gray-800 font-sans font-bold text-amber-300 uppercase placeholder-gray-600 focus:border-amber-400"
                   required
                 />
               </div>
@@ -474,7 +475,7 @@ const TokenForm = ({
                   <Label htmlFor="decimals" className="text-xs font-medium text-gray-300">
                     Decimals
                   </Label>
-                  <span className="text-[10px] text-gray-500 font-mono">6 (Meme) or 9 (SPL)</span>
+                  <span className="text-[10px] text-gray-400 font-sans">6 (Meme) or 9 (SPL)</span>
                 </div>
                 <Input
                   id="decimals"
@@ -485,16 +486,16 @@ const TokenForm = ({
                   placeholder="6"
                   value={formData.decimals ?? '6'}
                   onChange={handleInputChange}
-                  className="bg-gray-950 border-gray-800 font-mono text-white focus:border-emerald-500"
+                  className="bg-gray-950 border-gray-800 font-sans text-white focus:border-amber-400"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="supply" className="text-xs font-medium text-gray-300">
-                    Total Supply <span className="text-emerald-400">*</span>
+                    Total Supply <span className="text-amber-400">*</span>
                   </Label>
-                  <span className="text-[10px] text-emerald-400/80 font-mono">100% to creator ATA</span>
+                  <span className="text-[10px] text-amber-400 font-sans font-medium">100% to creator ATA</span>
                 </div>
                 <Input
                   id="supply"
@@ -503,14 +504,14 @@ const TokenForm = ({
                   placeholder="1000000000"
                   value={formData.supply ?? '1000000000'}
                   onChange={handleInputChange}
-                  className="bg-gray-950 border-gray-800 font-mono text-white focus:border-emerald-500"
+                  className="bg-gray-950 border-gray-800 font-sans text-white focus:border-amber-400"
                   required
                 />
               </div>
             </div>
 
-            <div className="p-3 bg-gray-950/70 border border-gray-800/80 rounded-xl text-xs text-gray-400 flex items-start gap-2.5">
-              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="p-3 bg-gray-950/70 border border-gray-800/80 rounded-xl text-xs text-gray-300 flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <span>
                 Standard meme coins typically launch with <strong>1,000,000,000</strong> supply and <strong>6 decimals</strong>.
                 100% of supply is minted straight into your wallet with zero platform custody.
@@ -530,30 +531,39 @@ const TokenForm = ({
                 onDrop={handleDrop}
                 className="flex items-center justify-center w-full"
               >
-                <label
-                  htmlFor="image-upload"
-                  className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-800 hover:border-emerald-500/60 rounded-xl cursor-pointer bg-gray-950/60 hover:bg-gray-950 transition-colors p-4"
+                <div
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Upload token logo image (PNG, JPG, WebP, GIF, or SVG up to 5MB)"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      document.getElementById('image-upload')?.click();
+                    }
+                  }}
+                  className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-zinc-800 hover:border-amber-500/60 focus:border-amber-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500/40 rounded-xl cursor-pointer bg-gray-950/60 hover:bg-gray-950 transition-colors p-4"
                 >
                   {imagePreviewUrl ? (
                     <div className="flex items-center gap-4">
                       <img
                         src={imagePreviewUrl}
                         alt="Logo preview"
-                        className="w-20 h-20 rounded-full object-cover border-2 border-emerald-500/50 shadow-md"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-amber-500/50 shadow-md"
                       />
                       <div className="text-left">
                         <p className="text-sm font-semibold text-white">Logo Selected</p>
-                        <p className="text-xs text-emerald-400">Click or drag another image to replace</p>
-                        <p className="text-[10px] text-gray-500 mt-1">Will be pinned to decentralized IPFS storage</p>
+                        <p className="text-xs text-amber-400">Click or press Enter to replace image</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Pinned to decentralized IPFS storage</p>
                       </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center">
-                      <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                      <Upload className="w-8 h-8 mb-2 text-zinc-500" />
                       <p className="text-sm text-gray-300 font-medium">
-                        <span className="text-emerald-400">Click to upload</span> or drag and drop
+                        <span className="text-amber-400">Click or press Enter to upload</span> or drag and drop
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, WebP, GIF, or SVG (Square, up to 5MB)</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, WebP, GIF, or SVG (Square, up to 5MB)</p>
                     </div>
                   )}
                   <input
@@ -567,7 +577,7 @@ const TokenForm = ({
                       }
                     }}
                   />
-                </label>
+                </div>
               </div>
             </div>
 
@@ -575,7 +585,7 @@ const TokenForm = ({
             <div className="space-y-1.5">
               <Label htmlFor="description" className="text-xs font-medium text-gray-300 flex justify-between">
                 <span>Description / Community Lore</span>
-                <span className="text-[10px] text-gray-500 font-mono">{formData.description?.length || 0}/500</span>
+                <span className="text-[10px] text-gray-400 font-sans">{formData.description?.length || 0}/500</span>
               </Label>
               <Textarea
                 id="description"
@@ -585,50 +595,54 @@ const TokenForm = ({
                 onChange={handleInputChange}
                 rows={3}
                 maxLength={500}
-                className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-emerald-500 resize-none text-sm"
+                className="bg-gray-950 border-gray-800 text-white placeholder-gray-600 focus:border-amber-400 resize-none text-sm font-sans"
               />
             </div>
 
             {/* Social Links */}
             <div className="space-y-3 pt-1">
               <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono">
+                <Globe className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-sans">
                   Social Links (Optional)
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   name="website"
+                  aria-label="Website URL"
                   placeholder="Website URL (https://...)"
                   value={formData.website || ''}
                   onChange={handleInputChange}
                   maxLength={100}
-                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600 font-sans focus:border-amber-400"
                 />
                 <Input
                   name="twitter"
+                  aria-label="Twitter or X handle or profile URL"
                   placeholder="Twitter / X (@handle or URL)"
                   value={formData.twitter || ''}
                   onChange={handleInputChange}
                   maxLength={100}
-                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600 font-sans focus:border-amber-400"
                 />
                 <Input
                   name="telegram"
+                  aria-label="Telegram group or channel invite"
                   placeholder="Telegram Link (t.me/...)"
                   value={formData.telegram || ''}
                   onChange={handleInputChange}
                   maxLength={100}
-                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600 font-sans focus:border-amber-400"
                 />
                 <Input
                   name="discord"
+                  aria-label="Discord server invite link"
                   placeholder="Discord Invite Link"
                   value={formData.discord || ''}
                   onChange={handleInputChange}
                   maxLength={100}
-                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600"
+                  className="bg-gray-950 border-gray-800 text-xs text-white placeholder-gray-600 font-sans focus:border-amber-400"
                 />
               </div>
             </div>
@@ -641,14 +655,14 @@ const TokenForm = ({
             {/* Security Controls */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Authority & RugCheck Controls
+                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-sans flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" /> Authority & RugCheck Controls
                 </span>
-                <span className="text-[11px] font-mono">
+                <span className="text-[11px] font-sans">
                   {isAdmin ? (
-                    <span className="text-emerald-400 font-bold">👑 Admin Exemption (0.00 SOL)</span>
+                    <span className="text-amber-300 font-bold">👑 Admin Exemption (0.00 SOL)</span>
                   ) : customizationCount === 0 ? (
-                    <span className="text-emerald-400 font-bold">✓ 100% Free Bundled (0.15 SOL)</span>
+                    <span className="text-amber-300 font-bold">✓ 100% Free Bundled (0.15 SOL)</span>
                   ) : (
                     <span className="text-amber-400 font-bold">+{ (customizationCount * 0.05).toFixed(2) } SOL Customization</span>
                   )}
@@ -660,22 +674,22 @@ const TokenForm = ({
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="switch-revoke-freeze" className="text-xs font-semibold text-white cursor-pointer">Revoke Freeze Authority</Label>
+                      <Label htmlFor="switch-revoke-freeze" className="text-xs font-semibold text-white cursor-pointer font-sans">Revoke Freeze Authority</Label>
                       {securityOptions.revokeFreeze ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           ✓ Bundled Free
                         </span>
                       ) : isAdmin ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           👑 Admin (0 SOL)
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40 font-sans font-medium">
                           +0.05 SOL Custom
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-gray-400 font-sans">
                       Required for Raydium liquidity pool creation and verified DexScreener/RugCheck score.
                     </p>
                   </div>
@@ -692,22 +706,22 @@ const TokenForm = ({
                 <div className="flex items-center justify-between pt-2 border-t border-gray-800/60">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="switch-revoke-mint" className="text-xs font-semibold text-white cursor-pointer">Revoke Mint Authority</Label>
+                      <Label htmlFor="switch-revoke-mint" className="text-xs font-semibold text-white cursor-pointer font-sans">Revoke Mint Authority</Label>
                       {securityOptions.revokeMint ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           ✓ Bundled Free
                         </span>
                       ) : isAdmin ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           👑 Admin (0 SOL)
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40 font-sans font-medium">
                           +0.05 SOL Custom
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-gray-400 font-sans">
                       Caps total supply forever. No more tokens can ever be minted, eliminating inflation risk.
                     </p>
                   </div>
@@ -724,22 +738,22 @@ const TokenForm = ({
                 <div className="flex items-center justify-between pt-2 border-t border-gray-800/60">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="switch-immutable" className="text-xs font-semibold text-white cursor-pointer">Immutable Metadata</Label>
+                      <Label htmlFor="switch-immutable" className="text-xs font-semibold text-white cursor-pointer font-sans">Immutable Metadata</Label>
                       {securityOptions.immutable ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           ✓ Bundled Free
                         </span>
                       ) : isAdmin ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                        <span className="text-[10px] bg-amber-950/80 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-sans font-medium">
                           👑 Admin (0 SOL)
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40">
+                        <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/40 font-sans font-medium">
                           +0.05 SOL Custom
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-gray-400 font-sans">
                       Permanently locks token name, symbol, logo, and IPFS metadata against tampering.
                     </p>
                   </div>
@@ -757,10 +771,10 @@ const TokenForm = ({
             {/* Priority Fee Speed */}
             <div className="space-y-2 pt-2 border-t border-gray-800/80">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider font-sans flex items-center gap-1.5">
                   <Zap className="w-4 h-4 text-amber-400" /> Transaction Priority Fee
                 </span>
-                <span className="text-[11px] text-gray-400 font-mono">High-priority compute budget for fast confirmation</span>
+                <span className="text-[11px] text-gray-400 font-sans">High-priority compute budget for fast confirmation</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -775,12 +789,12 @@ const TokenForm = ({
                     onClick={() => setPrioritySpeed(p.id)}
                     className={`p-2.5 rounded-lg border text-left transition-all ${
                       prioritySpeed === p.id
-                        ? 'bg-emerald-950/60 border-emerald-500 text-white'
+                        ? 'bg-amber-950/60 border-amber-500 text-white shadow-xs ring-1 ring-amber-500/30'
                         : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
                     }`}
                   >
-                    <div className="text-xs font-bold">{p.name}</div>
-                    <div className="text-[10px] text-gray-500 font-mono mt-0.5">{p.fee}</div>
+                    <div className="text-xs font-bold font-sans">{p.name}</div>
+                    <div className="text-[10px] text-gray-400 font-sans mt-0.5">{p.fee}</div>
                   </button>
                 ))}
               </div>
@@ -799,7 +813,7 @@ const TokenForm = ({
                     <img
                       src={imagePreviewUrl}
                       alt="Logo"
-                      className="w-12 h-12 rounded-full object-cover border border-emerald-500/50"
+                      className="w-12 h-12 rounded-full object-cover border border-amber-500/50 shadow-md"
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-gray-500">
@@ -807,13 +821,13 @@ const TokenForm = ({
                     </div>
                   )}
                   <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2 font-sans">
                       {formData.name || 'Unnamed Coin'}
-                      <span className="text-sm font-mono text-emerald-400">
+                      <span className="text-sm font-sans font-bold text-amber-300">
                         ${(formData.symbol || formData.ticker || 'COIN').toUpperCase()}
                       </span>
                     </h3>
-                    <p className="text-xs text-gray-400 font-mono">
+                    <p className="text-xs text-gray-400 font-sans">
                       Supply: {Number(formData.supply || 1000000000).toLocaleString()} • {formData.decimals ?? 6} Decimals
                     </p>
                   </div>
@@ -823,7 +837,7 @@ const TokenForm = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setCurrentStep(1)}
-                  className="text-xs text-emerald-400 hover:text-emerald-300"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-sans"
                 >
                   Edit
                 </Button>
@@ -832,20 +846,20 @@ const TokenForm = ({
               {/* Security Checklist */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div className="p-2.5 bg-gray-900/60 rounded-lg border border-gray-800 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="text-gray-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-gray-300 font-sans">
                     Freeze: <strong>{securityOptions.revokeFreeze ? 'Revoked' : 'Retained'}</strong>
                   </span>
                 </div>
                 <div className="p-2.5 bg-gray-900/60 rounded-lg border border-gray-800 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="text-gray-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-gray-300 font-sans">
                     Mint: <strong>{securityOptions.revokeMint ? 'Revoked' : 'Retained'}</strong>
                   </span>
                 </div>
                 <div className="p-2.5 bg-gray-900/60 rounded-lg border border-gray-800 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="text-gray-300">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-gray-300 font-sans">
                     Metadata: <strong>{securityOptions.immutable ? 'Immutable' : 'Mutable'}</strong>
                   </span>
                 </div>
@@ -855,25 +869,25 @@ const TokenForm = ({
             {/* Total Cost Breakdown Card */}
             <div className="bg-gray-950/90 rounded-xl p-4 border border-gray-800/90 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400 font-mono uppercase tracking-wider font-semibold">
+                <span className="text-gray-400 font-sans uppercase tracking-wider font-semibold">
                   Total Service Outlay
                 </span>
-                <span className="text-emerald-400 font-mono text-xs font-bold">
+                <span className="text-amber-300 font-sans text-xs font-bold">
                   {isAdmin ? '👑 Admin Exemption' : 'All-Inclusive Bundle'}
                 </span>
               </div>
 
               <div className="flex items-baseline justify-between pt-1">
                 <div>
-                  <div className="text-3xl font-extrabold text-white font-mono flex items-center gap-2">
+                  <div className="text-3xl font-extrabold text-white font-sans flex items-center gap-2">
                     {isAdmin ? '0.00 SOL' : `${currentPlatformFeeSol.toFixed(2)} SOL`}
                     {isAdmin && (
-                      <span className="text-xs font-normal text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                      <span className="text-xs font-normal text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 font-sans">
                         <Crown className="w-3 h-3 text-amber-400" /> Admin Mode
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="text-[11px] text-gray-400 mt-1 font-sans">
                     {isAdmin
                       ? '👑 Platform fee waived (0.00 SOL). Pure raw network cost.'
                       : customizationCount === 0
@@ -881,27 +895,27 @@ const TokenForm = ({
                       : `0.15 SOL flat base + ${(customizationCount * 0.05).toFixed(2)} SOL customization`}
                   </p>
                 </div>
-                <div className="text-right text-[11px] text-gray-500 font-mono">
+                <div className="text-right text-[11px] text-gray-400 font-sans">
                   + network gas & rent ~0.0168 SOL
                 </div>
               </div>
 
               {/* Itemized Rent & Gas Transparency */}
-              <div className="pt-3 border-t border-gray-800/80 grid grid-cols-2 gap-2 text-[11px] text-gray-300">
+              <div className="pt-3 border-t border-gray-800/80 grid grid-cols-2 gap-2 text-[11px] text-gray-300 font-sans">
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Token Mint & 100% Supply</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>IPFS Metadata Pinning</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Freeze Authority Revocation</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Mint Authority Revocation</span>
                 </div>
               </div>
@@ -909,14 +923,14 @@ const TokenForm = ({
           </div>
         )}
 
-        {/* STEP CONTROLS / NAVIGATION BUTTONS */}
-        <div className="pt-4 border-t border-gray-800/80 flex items-center justify-between gap-3">
+        {/* STEP CONTROLS / NAVIGATION BUTTONS (Stacked cleanly on mobile - Sol U01) */}
+        <div className="pt-4 border-t border-zinc-800/80 flex flex-col-reverse sm:flex-row items-center justify-between gap-3 relative z-10">
           {currentStep > 1 ? (
             <Button
               type="button"
               variant="outline"
               onClick={handlePrevStep}
-              className="border-gray-800 text-gray-300 hover:text-white hover:bg-gray-800/80 font-mono text-xs"
+              className="w-full sm:w-auto shiny-button rounded-xl text-zinc-300 hover:text-white font-sans text-xs px-4"
             >
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
             </Button>
@@ -928,7 +942,7 @@ const TokenForm = ({
             <Button
               type="button"
               onClick={handleNextStep}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs font-mono ml-auto"
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs font-sans ml-auto shadow-[0_0_20px_rgba(245,158,11,0.3)] rounded-xl px-5"
             >
               Next: {STEPS[currentStep].name} <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
@@ -938,7 +952,7 @@ const TokenForm = ({
                 <Button
                   type="button"
                   onClick={() => setVisible(true)}
-                  className="w-full sm:w-auto h-11 px-6 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+                  className="w-full sm:w-auto h-11 px-6 text-sm font-black bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black shadow-[0_0_25px_rgba(245,158,11,0.4)] transition-all cursor-pointer rounded-xl font-sans"
                 >
                   <Wallet className="w-4 h-4 mr-2" /> Connect Wallet to Launch
                 </Button>
@@ -947,7 +961,7 @@ const TokenForm = ({
                   type="button"
                   onClick={handleCreateToken}
                   disabled={!isFormValid}
-                  className="w-full sm:w-auto h-11 px-8 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto h-11 px-8 text-sm font-black bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black shadow-[0_0_25px_rgba(245,158,11,0.4)] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-sans"
                 >
                   <Rocket className="w-4 h-4 mr-2" />
                   {!isFormValid

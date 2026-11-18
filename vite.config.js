@@ -16,7 +16,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'solana-core': ['@solana/web3.js', '@solana/spl-token'],
+          'solana-core': ['@solana/web3.js'],
+          'spl-token': ['@solana/spl-token'],
           'metaplex': ['@metaplex-foundation/mpl-token-metadata'],
           'wallet': [
             '@solana/wallet-adapter-base',

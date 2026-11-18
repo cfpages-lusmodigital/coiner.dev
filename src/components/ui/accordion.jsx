@@ -1,64 +1,132 @@
-import React from 'react';
-import { cn } from '../../lib/utils'; // Make sure you have this utils file
+import React, { createContext, useContext, useState } from "react";
+import { cn } from "@/lib/utils";
 
-const Accordion = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("border-b", className)}
-    {...props}
-  />
-));
-Accordion.displayName = "Accordion";
+const AccordionContext = createContext({
+  activeItem: null,
+  toggleItem: () => {},
+});
 
-const AccordionItem = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("py-4", className)}
-    {...props}
-  />
-));
-AccordionItem.displayName = "AccordionItem";
+const Accordion = ({
+  type = "single",
+  collapsible = true,
+  defaultValue = null,
+  className,
+  children,
+  ...props
+}) => {
+  const [activeItem, setActiveItem] = useState(defaultValue);
 
-const AccordionTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "group flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
+  const toggleItem = (value) => {
+    if (activeItem === value) {
+      if (collapsible) {
+        setActiveItem(null);
+      }
+    } else {
+      setActiveItem(value);
+    }
+  };
+
+  return (
+    <AccordionContext.Provider value={{ activeItem, toggleItem }}>
+      <div className={cn("w-full space-y-2", className)} {...props}>
+        {children}
+      </div>
+    </AccordionContext.Provider>
+  );
+};
+
+const AccordionItem = ({ value, className, children, ...props }) => {
+  const { activeItem } = useContext(AccordionContext);
+  const isOpen = activeItem === value;
+
+  return (
+    <div
+      data-state={isOpen ? "open" : "closed"}
+      className={cn("overflow-hidden rounded-xl", className)}
+      {...props}
     >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  </button>
-));
-AccordionTrigger.displayName = "AccordionTrigger";
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, { itemValue: value, isOpen });
+        }
+        return child;
+      })}
+    </div>
+  );
+};
 
-const AccordionContent = React.forwardRef(({ className, children, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      className
-    )}
-    {...props}
-  >
-    <div className="pb-4 pt-0">{children}</div>
-  </div>
-));
-AccordionContent.displayName = "AccordionContent";
+const AccordionTrigger = ({
+  itemValue,
+  isOpen,
+  className,
+  children,
+  onClick,
+  ...props
+}) => {
+  const { toggleItem } = useContext(AccordionContext);
+
+  const handleClick = (e) => {
+    if (onClick) onClick(e);
+    if (itemValue) toggleItem(itemValue);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleClick(e);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      aria-expanded={isOpen}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        "flex w-full items-center justify-between py-3.5 text-left font-sans font-bold text-white transition-all cursor-pointer",
+        className
+      )}
+      {...props}
+    >
+      <span>{children}</span>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={cn(
+          "shrink-0 transition-transform duration-200 text-amber-400",
+          isOpen ? "rotate-180" : "rotate-0"
+        )}
+        aria-hidden="true"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+  );
+};
+
+const AccordionContent = ({ isOpen, className, children, ...props }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      data-state={isOpen ? "open" : "closed"}
+      className={cn(
+        "overflow-hidden text-sm leading-relaxed text-zinc-300 pb-4 pt-1 animate-fadeIn",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };

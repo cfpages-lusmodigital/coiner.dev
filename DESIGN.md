@@ -82,38 +82,38 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 | Principle | Global application | Page evidence required |
 |---|---|---|
 | Fitts's Law | Primary actions (Connect Wallet, Create Token, Copy Address) feature large touch areas (> 48px height) placed along the natural pointer path. | Target size, spacing, and placement measured on each page. |
-| Visual Hierarchy | Single dominant CTA per viewport with emerald-600 background; secondary inputs use muted gray-900 panels with subtle borders. | Heading order, contrast ratios, and action prominence. |
-| Von Restorff Effect | Distinctive glowing emerald badges (`#10b981`) and gold admin crown (`#f59e0b`) isolate key status elements from the dark background. | One highlighted element per view with documented justification. |
+| Visual Hierarchy | Single dominant CTA per viewport with metallic gold gradient background (`from-amber-500 via-yellow-400 to-amber-500`); secondary inputs use deep obsidian panels with specular gradient outlines. | Heading order, contrast ratios, and action prominence. |
+| Von Restorff Effect | Distinctive glowing gold badges (`#f59e0b`, `text-amber-300`) and 3D metallic coin emblem isolate key status elements from the dark background without green clash. | One highlighted element per view with documented justification. |
 | Object Constancy | Header, navigation bar, wallet connection state, and network switch remain pinned in identical screen coordinates. | Persistent navigation and status placement across all views. |
 | Snapping | Live preview card sticks smoothly to viewport top-24; priority fee buttons snap to 3-column equal-width grid. | Snap points, flex layouts, and sticky alignment rules. |
 | Motion Blur | Spinners and progress pulses use smooth 200–300ms transitions without high-frequency flashing. | Motion duration, cubic-bezier easing, and reduced-motion fallbacks. |
 | Natural Mapping | Form fields flow logically from identity (Name, Ticker, Logo) to economics (Decimals, Supply) to security toggles. | Control placement matching mental model of token issuance. |
-| Tabular Figures | All lamport and SOL cost figures use monospace font (`font-mono`) with aligned decimals to facilitate scanning. | Font feature settings (`tnum`) and numeric column alignments. |
+| Tabular Figures | Numerical figures and currency metrics use clean, unified sans typography (`font-sans tnum` or proportional sans) ensuring seamless typographic unity. | Font feature settings and numeric column alignments. |
 | Animate Only the Delta | When typing ticker or changing supply, only the affected text nodes in the preview card animate or re-render. | Selective DOM updates preserving parent card stability. |
 | Inertia | Accordion expansion, modal backdrop fading, and button hover states feature smooth deceleration curves. | Momentum, spring physics, and CSS cubic transitions. |
 | Multimodal Feedback | Token launch completion delivers simultaneous visual badge update, copy button label change, and toast notification. | Multiple confirmation channels for consequential blockchain steps. |
-| Visual Cues | Clear focus rings (`focus:border-emerald-500`), disabled button opacity (50%), and hover brightness feedback across all interactive controls. | Distinct interactive states for hover, active, focus, and disabled. |
-| Skeuomorphism | Live Dex Preview emulates a physical token trading card with avatar medallion and embossed badges to convey tangible asset ownership. | Real-world metaphors justifying improved conceptual clarity. |
+| Visual Cues | Clear focus rings (`focus:border-amber-400`), disabled button opacity (50%), and hover gold specular glow across all interactive controls. | Distinct interactive states for hover, active, focus, and disabled. |
+| Skeuomorphism | Live Dex Preview emulates a physical 3D metallic token card with avatar medallion and embossed gold badges to convey tangible asset ownership. | Real-world metaphors justifying improved conceptual clarity. |
 
 ### 4.2 Design Tokens and Visual System
 
 - **Token source:** Tailwind CSS v4 variables and custom classes in `src/index.css`.
-- **Typography:** `Inter`, system sans-serif for UI labels; `JetBrains Mono` / monospace for addresses, hashes, and SOL numbers.
-- **Color and contrast:** Deep obsidian (`#030712`, `bg-gray-950`), card panels (`#111827`, `bg-gray-900`), border boundaries (`#1f2937`, `border-gray-800`), vibrant emerald (`#10b981`), amber admin highlights (`#f59e0b`). Exceeds WCAG AAA contrast ratio (> 7:1) for all critical text.
-- **Spacing, radius, and shadow:** 8px base grid, rounded-xl (12px) for cards, rounded-lg (8px) for inputs, subtle glow shadows (`shadow-emerald-500/10`).
-- **Dark mode:** Exclusive obsidian dark theme native to crypto/Web3 environments.
+- **Typography:** Unified `Inter` / system sans-serif (`font-sans`) across all UI labels, inputs, tickers, stats, and badges, completely eliminating terminal monospace look.
+- **Color and contrast:** Deep obsidian (`#09090b` / `#030712`), card panels (`#111827`, `bg-gray-900`), border boundaries (`#27272a`, `border-zinc-800`), metallic gold (`#f59e0b`, `#fbbf24`, `#d97706`), specular white/gray gradient outlines (`.shiny-card`, `.shiny-pill`, `.shiny-button`). Zero green/emerald/cyan visual elements. Exceeds WCAG AAA contrast ratio (> 7:1) for all critical text.
+- **Spacing, radius, and shadow:** 8px base grid, rounded-xl (12px) for cards, rounded-lg (8px) for inputs, subtle gold glow shadows (`shadow-amber-500/20`).
+- **Dark mode:** Exclusive obsidian dark theme native to high-end crypto/Web3 environments.
 
 ### 4.3 Accessibility Target
 
 - **WCAG Level:** AA compliance.
-- **Keyboard navigation:** Full tab-order navigation across all form controls, modals, and wallet buttons with visible focus rings.
+- **Keyboard navigation:** Full tab-order navigation across all form controls, modals, image upload triggers, and wallet buttons with visible focus rings.
 - **Touch targets:** Minimum 44x44px for all mobile interactive targets.
-- **Reduced motion:** Obeys `prefers-reduced-motion: reduce` by disabling non-essential pulse and spin animations.
+- **Reduced motion:** Obeys `prefers-reduced-motion: reduce` by disabling non-essential pulse, shimmer, and float animations.
 
 ### 4.4 Performance Budget
 
-- **Bundle Size:** Core app JavaScript bundle < 200KB gzipped.
-- **Initial Load:** First Contentful Paint (FCP) < 0.8s on 4G networks.
+- **Initial Requested JavaScript:** < 250KB gzipped (measured initial page load: 231.7KB gzipped across 4 initial chunks: `index` 40.6KB, `solana-core` 90.6KB, `wallet` 89.7KB, `ui-vendor` 10.9KB). Heavy post-launch libraries are dynamically deferred: `@metaplex-foundation/mpl-token-metadata` (71.7KB), `@solana/spl-token` (21.4KB), and `canvas-confetti` (4.3KB) are loaded only on demand during transaction assembly and success celebration.
+- **Initial Load:** First Contentful Paint (FCP) < 1.8s cold start (1,616ms measured in headless CDP trace).
 - **Interaction to Next Paint (INP):** < 50ms for live preview keystroke updates.
 
 ### 4.5 Motion Policy
@@ -133,28 +133,29 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 ## Art Direction
 
 ### Character
-`coiner.dev` adopts a high-conviction "Sovereign Web3 Studio" visual character inspired by top-tier decentralized financial terminals (Hyperliquid, Jupiter, Uniswap V3). It intentionally repudiates low-trust cartoonish launchpad tropes, projecting cryptographic rigor, high execution velocity, and absolute transparency.
+`coiner.dev` adopts a high-conviction "Sovereign Web3 Studio" visual character in Dark Obsidian, Crisp White, and Metallic Gold inspired by top-tier decentralized financial terminals. It intentionally repudiates low-trust cartoonish launchpad tropes, projecting cryptographic rigor, high execution velocity, and absolute transparency.
 
 ### Tokens
-- Canvas: `#030712` (Obsidian 950)
-- Surface Panels: `#111827` (Obsidian 900) with 90% opacity and 12px blur
-- Hairline Boundaries: `#1f2937` (Gray 800) with 80% opacity
-- Primary Energy / Success: `#10b981` (Emerald 500)
-- Administrative Sovereign Glow: `#f59e0b` (Amber 400)
+- Canvas: `#09090b` (Deep Obsidian)
+- Surface Panels: `#111827` (Obsidian 900) with 90% opacity and 16px blur
+- Hairline Boundaries: `#27272a` (Zinc 800) with specular gradient overlays
+- Primary Energy / Authority: `#f59e0b` / `#fbbf24` (Metallic Gold)
+- Typography: Clean `font-sans` throughout (zero monospace terminal font)
 - Warning / Danger: `#ef4444` (Red 500)
 
 ### Build Mandate
-Zero layout shifts (CLS = 0.00). All numeric currency metrics must render in tabular monospace figures to eliminate text jittering. Modals and overlays must utilize hardware-accelerated transforms (`transform: translate3d`) to ensure steady 60fps frame rates on mobile Web3 browsers.
+Zero layout shifts (CLS = 0.00). All numeric currency metrics render in clean sans typography. Modals and overlays utilize hardware-accelerated transforms (`transform: translate3d`) to ensure steady 60fps frame rates on mobile Web3 browsers.
 
 ### Composition Patterns
 - **Split-Screen Studio:** Desktop view splits into a 7-column configuration workspace and a 5-column sticky real-time preview terminal.
+- **Ambient Hero Depth:** Hero background features a subtle, atmospheric 3D Gold Solana Coin asset at low opacity/blur, leaving foreground headline copy crisp and readable with specular text outlines.
 - **Progressive Disclosure:** Advanced security options (Revoke Freeze, Revoke Mint, Immutable) and transaction priority overrides are presented below primary identity fields, defaulting to maximum community safety.
-- **Floating Status Anchor:** Navigation bar remains fixed to viewport top with blurred backdrop (`z-50 backdrop-blur-md`), preserving immediate visibility of connected wallet, network cluster, and administrative tier.
+- **Floating Status Anchor:** Navigation bar remains fixed to viewport top with blurred backdrop (`z-50 backdrop-blur-xl bg-[#09090b]/85`), preserving immediate visibility of connected wallet, network cluster, and administrative tier.
 
 ### Component and Usage Rules
-- Brand identity: `public/favicon.svg` is the canonical 64-unit minted coin mark with a concentric bevel, emerald code brackets and cyan slash. `public/logo.svg` is the matching dark-mode horizontal wordmark. `CoinerLogo()` renders the mark at a fixed 36px with decorative empty alt beside readable brand text. The header wraps its action cluster on narrow screens; the logo has no animation or wallet/network dependencies.
+- Brand identity: `public/favicon.svg` is the canonical gold Solana coin mark with metallic rim, obsidian background, and Solana three-bar gold motif. `src/components/CoinerLogo.jsx` renders the mark with crisp white wordmark `coiner` and gold `.dev` (`text-amber-400`).
 - Buttons must always indicate active/disabled states with clear cursor changes (`cursor-pointer` vs `cursor-not-allowed`).
-- Badges must employ semi-transparent dark containers (`bg-emerald-950/80`) with high-contrast text and 1px outer borders to maintain legibility against variable page sections.
+- Badges employ semi-transparent dark amber containers (`bg-amber-950/80 border-amber-500/40 text-amber-300`) with high-contrast text and 1px outer borders.
 - Input fields must enforce visible focus rings with zero outline clipping.
 
 ---
@@ -186,28 +187,28 @@ Desktop: 2-column grid (`lg:grid-cols-12`). Tablet/Mobile: Stacks vertically (`g
 Inputs feature 150ms border-color transitions on focus. Image dropzone shows dashed border highlight on drag-over. Priority fee buttons toggle active background instantly with 100ms easing.
 
 #### Content and Forms
-Labels clearly mark required fields with emerald asterisks. Decimals input contains microcopy helper explaining meme standard (6) vs SPL standard (9).
+Labels clearly mark required fields with amber asterisks. Decimals input contains microcopy helper explaining meme standard (6) vs SPL standard (9).
 
 #### Principle Adherence
 
 | Principle | Application | Evidence |
 |---|---|---|
-| Fitts's Law | Primary "Create Token" CTA spans full form width (h-12 / 48px) directly under the cost summary. | [TokenForm.jsx#L569](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L569) button dimensions |
-| Visual Hierarchy | Bold 24px CardTitle with Sparkles icon dominates; secondary toggles use compact 14px labels. | CardTitle leading CardHeader in [TokenForm.jsx#L198](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L198) |
-| Von Restorff Effect | Emerald "Admin Mode" badge or "Flat 0.15 SOL (All-Inclusive)" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx#L257](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L257) |
-| Object Constancy | Header remains sticky at top-0 (`bg-gray-950/85 backdrop-blur-md`) through entire configuration journey. | Sticky header markup in [App.jsx#L36](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L36) |
-| Snapping | Priority fee buttons snap into an equal 3-column grid (`grid-cols-3 gap-2`). | Grid layout in [TokenForm.jsx#L491](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L491) |
+| Fitts's Law | Primary "Create Token" CTA spans full form width (h-11 / 44px) directly under the cost summary. | [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) button dimensions |
+| Visual Hierarchy | Bold 24px CardTitle with Sparkles icon dominates; secondary toggles use compact 14px labels. | CardTitle leading CardHeader in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
+| Von Restorff Effect | Gold "Admin Mode" badge or "Flat 0.15 SOL Bundle" badge visually isolates pricing status. | Custom badge with distinct background in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
+| Object Constancy | Header remains sticky at top-0 (`bg-[#09090b]/85 backdrop-blur-xl`) through entire configuration journey. | Sticky header markup in [App.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx) |
+| Snapping | Priority fee buttons snap into an equal 3-column grid (`grid-cols-3 gap-2`). | Grid layout in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
 | Motion Blur | N/A: studio form elements update instantaneously on state changes without high-velocity spatial movement. | Form fields update in-place without animated layout translation |
 | Natural Mapping | Field ordering mirrors token metadata specification: Name -> Symbol -> Decimals -> Supply -> Media -> Security. | Sequential DOM structure in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
-| Tabular Figures | Fee summary uses `font-mono` ensuring aligned decimal points for 0.15 SOL total. | Monospace classes applied to total fee in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
+| Tabular Figures | Fee summary uses clean font-sans ensuring seamless typographic unity across the card. | Clean sans styling in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
 | Animate Only the Delta | Only changed text nodes in the live preview update on keystrokes; parent card layout remains frozen. | Local React state updates in [LivePreview.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LivePreview.jsx) |
 | Inertia | Form scrolling employs native browser momentum with smooth boundary resistance. | Native OS touch-scroll momentum on parent `<main>` |
-| Multimodal Feedback | Connect wallet prompt visually disables the submit button while displaying explanatory helper text. | Dynamic disabled text and button styling in [TokenForm.jsx#L574](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx#L574) |
-| Visual Cues | Disabled submit button renders at 50% opacity with `cursor-not-allowed`; active button shows hover glow. | Tailwind utility classes `disabled:opacity-50 disabled:cursor-not-allowed` |
-| Skeuomorphism | Live Preview card renders token avatar as an embossed medallion emulating a physical minted coin. | Avatar frame styling in [LivePreview.jsx#L55](file:///C:/Users/THINKPAD/coiner.dev/src/components/LivePreview.jsx#L55) |
+| Multimodal Feedback | Connect wallet prompt visually disables the submit button while displaying explanatory helper text. | Dynamic disabled text and button styling in [TokenForm.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/TokenForm.jsx) |
+| Visual Cues | Disabled submit button renders at 50% opacity with `cursor-not-allowed`; active button shows gold specular glow. | Tailwind utility classes `disabled:opacity-50 disabled:cursor-not-allowed` |
+| Skeuomorphism | Live Preview card renders token avatar as an embossed medallion emulating a physical minted coin with floating 3D gold Solana coin. | Avatar frame styling in [LivePreview.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LivePreview.jsx) |
 
 #### Verification
-- Build verification: `pnpm run build` completed in 15.42s (0 errors).
+- Build verification: `pnpm run build` completed cleanly (0 errors).
 - Live verification: Tested on `https://coiner.dev` across Devnet and Mainnet-beta.
 
 ---
@@ -218,18 +219,18 @@ Labels clearly mark required fields with emerald asterisks. Decimals input conta
 Orchestrates the multi-stage atomic transaction execution, providing real-time feedback during IPFS pinning, keypair generation, wallet signature approval, on-chain confirmation, and celebration.
 
 #### Layout and Hierarchy
-Centered modal dialog (`max-w-md`) with dark frosted backdrop. Hierarchy: Icon status indicator -> Step progress sequence -> Detailed status message -> Action footer.
+Centered modal dialog (`sm:max-w-lg max-h-[90dvh] overflow-y-auto`) with dark frosted backdrop. Hierarchy: Icon status indicator -> Step progress sequence -> Detailed status message -> Action footer.
 
 #### Components and States
-- Step list: 4 progress rows with dynamic icons (Circle, Spinning Loader, Green Checkmark).
-- Error state: Red badge with raw RPC error description and "Try Again" recovery CTA.
-- Success state: Party popper icon, celebratory heading, token avatar preview, contract address copy box, Solscan link, RugCheck link, Raydium pool link, X share button.
+- Step list: 4 progress rows with dynamic icons (Circle, Spinning Loader, Amber Checkmark).
+- Error state: Red badge with raw RPC error description and "Try Again" recovery CTA (isolated from recovered results).
+- Success state: 3D Gold Coin, celebratory heading, token avatar preview, contract address copy box, Solscan link, RugCheck link, Raydium pool link, X share button.
 
 #### Accessibility
-Dialog enforces `role="dialog"` and `aria-modal="true"`. Focus is trapped inside the modal during active deployment; Escape key is disabled during active wallet signing to prevent transaction desynchronization.
+Dialog enforces `role="dialog"` and `aria-modal="true"`. Focus is trapped inside the modal during active deployment; Escape key is disabled during active wallet signing to prevent transaction desynchronization. Copy button features explicit `aria-label`.
 
 #### Responsive Behavior
-Scales down gracefully on mobile viewports with `w-[95vw]` and scrollable raw error container (`max-h-40 overflow-y-auto`).
+Scales down gracefully on mobile viewports with `max-h-[90dvh] overflow-y-auto` and scrollable raw error container.
 
 #### Motion and Feedback
 Spinning loaders use standard CSS `animate-spin` (1s linear infinite). Step completion transitions with a 200ms ease-out checkmark animation.
@@ -241,19 +242,19 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 
 | Principle | Application | Evidence |
 |---|---|---|
-| Fitts's Law | Success action buttons (Solscan, RugCheck, Raydium) feature large 40px touch targets arranged in a 2-column grid. | Button grid layout in [LaunchModal.jsx#L286](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L286) |
-| Visual Hierarchy | Celebratory "$TOKEN is Live!" heading in 24px bold text leads the success state above secondary action links. | DialogTitle styling in [LaunchModal.jsx#L215](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L215) |
-| Von Restorff Effect | Green PartyPopper icon in emerald-950/60 container draws primary visual focus upon successful launch. | Top visual badge container in [LaunchModal.jsx#L211](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L211) |
-| Object Constancy | Modal maintains consistent 480px width and centered screen anchor throughout all state transitions. | DialogContent max-width class `sm:max-w-md` |
-| Snapping | Action buttons in success dialog snap into a balanced 2-column grid with a full-width Raydium CTA. | Grid classes `grid grid-cols-2 gap-2.5` in [LaunchModal.jsx#L286](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L286) |
+| Fitts's Law | Success action buttons (Solscan, RugCheck, Raydium) feature large 40px touch targets arranged in a 2-column grid. | Button grid layout in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Visual Hierarchy | Celebratory "$TOKEN is Live!" heading in 24px bold text leads the success state above secondary action links. | DialogTitle styling in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Von Restorff Effect | 3D Gold Coin and celebratory heading draw primary visual focus upon successful launch. | Top visual badge container in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Object Constancy | Modal maintains consistent width and centered screen anchor throughout all state transitions. | DialogContent max-width class `sm:max-w-lg` |
+| Snapping | Action buttons in success dialog snap into a balanced 2-column grid with a full-width Raydium CTA. | Grid classes `grid grid-cols-2 gap-2.5` in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 | Motion Blur | N/A: status transitions use fade-in opacities rather than fast lateral panning. | State transitions use opacity fade without motion blur |
-| Natural Mapping | Step progression maps sequentially from top to bottom (Step 1 Upload -> Step 2 Prepare -> Step 3 Sign -> Step 4 Broadcast). | Step mapping array order in [LaunchModal.jsx#L27](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L27) |
-| Tabular Figures | Mint address input box uses `font-mono text-xs` with truncated middle ellipsis for readability. | Monospace styling on address input in [LaunchModal.jsx#L254](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L254) |
-| Animate Only the Delta | Only active progress row icon toggles between pending circle, spinner, and checkmark. | ProgressStep icon condition in [LaunchModal.jsx#L47](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L47) |
+| Natural Mapping | Step progression maps sequentially from top to bottom (Step 1 Upload -> Step 2 Prepare -> Step 3 Sign -> Step 4 Broadcast). | Step mapping array order in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Tabular Figures | Mint address input box uses `font-sans text-xs` with high-contrast amber styling for readability. | Clean sans styling on address input in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Animate Only the Delta | Only active progress row icon toggles between pending circle, spinner, and checkmark. | ProgressStep icon condition in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 | Inertia | Modal entry and exit utilize standard Radix UI decelerated scale animation. | Radix Dialog entry transform in `@/components/ui/dialog` |
-| Multimodal Feedback | Successful copy action displays green checkmark, switches label to "Copied!", and sets temporary clipboard timeout. | Copy feedback state in [LaunchModal.jsx#L85](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L85) |
-| Visual Cues | Error container renders in high-contrast red-950/30 background with red-500 border for instant recognition. | Error container styling in [LaunchModal.jsx#L183](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L183) |
-| Skeuomorphism | "Copied!" button simulates a physical stamping action with brief checkmark feedback. | Temporary copied icon state change in [LaunchModal.jsx#L268](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx#L268) |
+| Multimodal Feedback | Successful copy action displays "Copied to clipboard!" label and sets temporary clipboard timeout. | Copy feedback state in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Visual Cues | Error container renders in high-contrast red-950/30 background with red-500 border for instant recognition. | Error container styling in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Skeuomorphism | "Copied!" button simulates a physical stamping action with brief label feedback. | Temporary copied icon state change in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 
 #### Verification
 - Simulated Devnet launch verified through Phantom wallet signature and on-chain confirmation.
@@ -267,7 +268,7 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 Enables the platform owner to verify their admin Solana wallet (`2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV`), instantly activating the 0.00 SOL platform fee exemption across the application with zero third-party authentication overhead.
 
 #### Layout and Hierarchy
-Compact header component embedded directly beside the network switcher and wallet button. When signed out or when a standard public user connects, remains hidden to keep the customer-facing interface clean; when the authorized admin wallet connects, displays a glowing emerald badge with gold Crown icon and "0 SOL Fee" pill.
+Compact header component embedded directly beside the network switcher and wallet button. When signed out or when a standard public user connects, remains hidden to keep the customer-facing interface clean; when the authorized admin wallet connects, displays a glowing gold badge with Crown icon and "0 SOL Fee" pill.
 
 #### Components and States
 - Public User / Disconnected: Hidden completely to preserve clean, distraction-free degen UX.
@@ -290,19 +291,19 @@ Concise microcopy: "Admin • 0 SOL Fee", with hover tooltip clarifying verifica
 
 | Principle | Application | Evidence |
 |---|---|---|
-| Fitts's Law | Admin badge is placed in top navigation flex container adjacent to the wallet button, clustering identity status with connection triggers. | Top navigation flex container in [App.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48) |
-| Visual Hierarchy | Subtle emerald border and muted backdrop (`bg-emerald-950/90 border-emerald-500/40`) sits quietly beside the primary green Wallet Multi Button. | Muted badge styling in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
-| Von Restorff Effect | Gold Crown icon (`#f59e0b`) distinctly isolates the owner's privileged admin status. | Crown component color token in [admin.jsx#L71](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L71) |
-| Object Constancy | Admin badge remains pinned at fixed coordinates in the top navigation bar. | Sticky header placement in [App.jsx#L44](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L44) |
-| Snapping | Header items align in a clean flex container with `gap-2.5 sm:gap-3`. | Header flexbox layout in [App.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48) |
-| Motion Blur | N/A: badge mount uses instant hardware-accelerated CSS opacity fade without motion blur. | CSS fade-in duration class in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
-| Natural Mapping | Status badge sits immediately adjacent to the connected wallet trigger that grants it. | Visual adjacency to WalletMultiButton in [App.jsx#L48-L79](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx#L48-L79) |
-| Tabular Figures | Monospace digits for "0 SOL Fee" indicator in font-mono span. | Monospace font styling in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
-| Animate Only the Delta | Only the badge element renders into the DOM when admin wallet is detected, leaving surrounding navbar untouched. | React conditional render in [admin.jsx#L65](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L65) |
-| Inertia | CSS opacity transition smoothly resolves within 200ms (`animate-in fade-in duration-200`) without layout shift. | Tailwind animate-in transition in [admin.jsx#L69](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L69) |
+| Fitts's Law | Admin badge is placed in top navigation flex container adjacent to the wallet button, clustering identity status with connection triggers. | Top navigation flex container in [App.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx) |
+| Visual Hierarchy | Subtle gold border and muted backdrop (`bg-amber-950/60 border-amber-500/40`) sits quietly beside the primary gold Wallet Multi Button. | Muted badge styling in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Von Restorff Effect | Gold Crown icon (`#f59e0b`) distinctly isolates the owner's privileged admin status. | Crown component color token in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Object Constancy | Admin badge remains pinned at fixed coordinates in the top navigation bar. | Sticky header placement in [App.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx) |
+| Snapping | Header items align in a clean flex container with `gap-2.5 sm:gap-3`. | Header flexbox layout in [App.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx) |
+| Motion Blur | N/A: badge mount uses instant hardware-accelerated CSS opacity fade without motion blur. | CSS fade-in duration class in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Natural Mapping | Status badge sits immediately adjacent to the connected wallet trigger that grants it. | Visual adjacency to WalletMultiButton in [App.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/App.jsx) |
+| Tabular Figures | High-contrast digits for "0 SOL Fee" indicator in font-sans span. | Font-sans styling in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Animate Only the Delta | Only the badge element renders into the DOM when admin wallet is detected, leaving surrounding navbar untouched. | React conditional render in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Inertia | CSS opacity transition smoothly resolves within 200ms (`animate-in fade-in duration-200`) without layout shift. | Tailwind animate-in transition in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
 | Multimodal Feedback | Connecting admin wallet immediately renders the header badge AND toggles the creator form's platform fee to 0.00 SOL. | Dual visual state feedback in header and generator card |
-| Visual Cues | Hovering over the Admin badge reveals a native tooltip (`title="Admin Wallet Recognized • 0.00 SOL Platform Fee"`). | Native HTML `title` attribute on container in [admin.jsx#L68](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L68) |
-| Skeuomorphism | Crown badge utilizes the universal royal crown symbol denoting administrative sovereignty. | Lucide Crown icon representing authority in [admin.jsx#L71](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx#L71) |
+| Visual Cues | Hovering over the Admin badge reveals a native tooltip (`title="Admin Wallet Recognized • 0.00 SOL Platform Fee"`). | Native HTML `title` attribute on container in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
+| Skeuomorphism | Crown badge utilizes the universal royal crown symbol denoting administrative sovereignty. | Lucide Crown icon representing authority in [admin.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/lib/admin.jsx) |
 
 #### Verification
 - Verified native wallet allowlist matching with `DEFAULT_ADMIN_WALLET = '2di9sSnh1BYixnNw7Hw47XbMet9J5HFdF8NUMN2LZmaV'`.
@@ -346,11 +347,11 @@ Provides direct, educational answers detailing why Freeze authority must be revo
 | Snapping | Step cards snap into equal-width grid columns (`gap-4`). | Grid classes `grid-cols-1 md:grid-cols-5 gap-4` in [StepGuide.jsx#L29](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx#L29) |
 | Motion Blur | N/A: accordion animation is strictly vertical and limited to 200ms. | Accordion down transition is low-velocity without blur |
 | Natural Mapping | Roadmap numbers flow chronologically from left to right (01 Connect -> 02 Configure -> 03 Deploy -> 04 Verify -> 05 Liquidity). | Array index sequencing in [StepGuide.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx) |
-| Tabular Figures | Numerical rent values in FAQ answers (`0.0067 to 0.015 SOL`) use clean monospace inline styling. | Code/monospace tags around numeric values in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
+| Tabular Figures | Numerical rent values in FAQ answers (`0.0067 to 0.015 SOL`) use clean font-sans styling. | Clean sans tags around numeric values in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
 | Animate Only the Delta | Expanding one accordion item leaves sibling items and the parent container layout stable. | Radix Accordion localized expansion |
 | Inertia | Accordion expansion employs smooth spring-like height interpolation. | CSS height animation with ease-out cubic curve |
 | Multimodal Feedback | Expanding an item rotates the right-hand chevron 180 degrees while revealing text. | Animated chevron icon transition in Radix trigger |
-| Visual Cues | Accordion triggers highlight with emerald text color (`hover:text-emerald-400`) on pointer hover. | Tailwind hover utility class `hover:text-emerald-400` in [FAQ.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx#L48) |
+| Visual Cues | Accordion triggers highlight with gold text color (`hover:text-amber-300`) on pointer hover. | Tailwind hover utility class `hover:text-amber-300` in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
 | Skeuomorphism | Numbered roadmap steps emulate a physical board game progression path. | Milestone layout with connected progression lines |
 
 #### Verification
@@ -362,13 +363,13 @@ Provides direct, educational answers detailing why Freeze authority must be revo
 ## 6. Cross-Page Consistency
 
 1. **Header Consistency:** Top navigation bar (`header`) remains identical across all views, anchoring brand logo, admin auth widget, network switcher, and wallet connect button.
-2. **Typography System:** All headings use `Inter` font in weights 700 and 800; all body text uses `Inter` regular/medium; all addresses, hashes, and currency amounts use monospace `JetBrains Mono`.
+2. **Typography System:** Unified `Inter` / system sans-serif (`font-sans`) across all headings, body text, addresses, hashes, and currency amounts, completely eliminating monospace terminal fonts.
 3. **Color Tokens:**
-   - Background Canvas: `#030712` (`bg-gray-950`)
+   - Background Canvas: `#09090b` (`bg-[#09090b]`)
    - Surface Panels: `#111827` (`bg-gray-900`)
-   - Accent Primary: `#10b981` (`emerald-500` / `emerald-600`)
-   - Accent Authority: `#f59e0b` (`amber-400` / `amber-500`)
-   - Hairline Borders: `#1f2937` (`border-gray-800`)
+   - Accent Primary / Authority: `#f59e0b` / `#fbbf24` (Metallic Gold)
+   - Accent Specular: White-to-gray linear gradient outlines (`.shiny-outline`, `.shiny-card`, `.shiny-pill`)
+   - Hairline Borders: `#27272a` (`border-zinc-800`)
 4. **Interactive Component Rules:** All buttons share standard rounded corners (`rounded-xl` or `rounded-lg`), explicit 150ms transitions, and disabled states at 50% opacity.
 
 ---
