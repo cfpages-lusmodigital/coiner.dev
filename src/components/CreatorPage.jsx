@@ -1,13 +1,14 @@
 // src/components/CreatorPage.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, lazy, Suspense } from 'react';
 import TokenForm from './TokenForm';
 import LivePreview from './LivePreview';
-import LaunchModal from './LaunchModal';
 import FAQ from './FAQ';
 import StepGuide from './StepGuide';
 import { GoldCoin3D } from '@/components/ui/GoldCoin3D';
 import { Rocket, ShieldCheck, Zap, Coins, CheckCircle2, Crown, Sparkles } from 'lucide-react';
 import { useAdminStatus } from '@/lib/admin';
+
+const LaunchModal = lazy(() => import('./LaunchModal'));
 
 const CreatorPage = ({ network = 'devnet' }) => {
   const { isAdmin } = useAdminStatus();
@@ -30,8 +31,10 @@ const CreatorPage = ({ network = 'devnet' }) => {
   const [launchError, setLaunchError] = useState('');
   const [launchResult, setLaunchResult] = useState(null);
   const formSubmitRef = useRef(null);
+  const launchSnapshotRef = useRef(null);
 
   const handleLaunchStart = () => {
+    launchSnapshotRef.current = { tokenData: { ...formData }, network };
     setLaunchError('');
     setLaunchResult(null);
     setLaunchStatus('uploading');
@@ -135,15 +138,15 @@ const CreatorPage = ({ network = 'devnet' }) => {
         </div>
       </div>
 
-      <LaunchModal
+      {isModalOpen && <Suspense fallback={<div role="status" className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/90 text-white">Opening launch status…</div>}><LaunchModal
         open={isModalOpen}
         setOpen={setIsModalOpen}
-        tokenData={formData}
+        tokenData={launchSnapshotRef.current?.tokenData || formData}
         status={launchStatus}
         statusMessage={statusMessage}
         error={launchError}
         result={launchResult}
-        network={network}
+        network={launchSnapshotRef.current?.network || network}
         onRetry={() => {
           if (formSubmitRef.current) {
             formSubmitRef.current();
@@ -151,7 +154,7 @@ const CreatorPage = ({ network = 'devnet' }) => {
             handleLaunchStart();
           }
         }}
-      />
+      /></Suspense>}
     </>
   );
 };

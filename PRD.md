@@ -1,5 +1,14 @@
 # Product Requirements Document (PRD): coiner.dev — Sovereign Solana Token Creator
 
+## UI audit closure — 2026-11-18
+
+- ✅ Completed: revalidated U01–U14 against the current production build; all fourteen findings closed for the tested UI profile.
+- ✅ Completed: isolate asynchronous confirmation by attempt/signature/network, gate broadcast retries, and clear feedback when ownership changes.
+- ✅ Completed: verify reduced motion, bounded decorative animation, beam movement, keyboard names/locks, clipboard failure, switch targets and palette.
+- ✅ Completed: measured initial JavaScript at 204,480 gzip bytes (<204,800 bytes); DESIGN.md/CODEBASE.md reflect current browser evidence.
+
+Evidence: `scripts/verify-ui.mjs`, `scripts/accept-ui.mjs`, `scratch/sol_ui_repair_evidence/` and the canonical OneDrive report `REPORT/REPORT-COINER-UI-CLOSURE-2026-11-18.md`. These tests use controlled RPC/upload/wallet fixtures; they do not certify real token creation or physical-wallet behavior.
+
 **Product Name:** `coiner.dev`  
 **Domain:** `https://coiner.dev` (Cloudflare Pages `coiner-dev`, project `db1e067e-925c-402e-96de-d0f3c2ef467b`)  
 **Repository:** `cfpages-lusmodigital/coiner.dev`  
@@ -103,7 +112,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 - `✅ Completed` **Logo Redesign (`src/components/CoinerLogo.jsx` & `public/favicon.svg`):** Sovereign Solana coin insignia with metallic gold rim and three-bar emblem designed by Engineer Sol, paired with crisp white `coiner` and gold `.dev`.
 - `✅ Completed` **Typographic Unification:** Stripped all `font-mono` terminal classes in favor of unified `font-sans` clean modern typography across all screens, forms, statistics, and tables.
 - `✅ Completed` **Ambient 3D Hero Depth & Specular Outlines:** Integrated physical 3D gold Solana coin (`GoldCoin3D`) as a subtle ambient backdrop behind the hero headline with specular white-to-gray text outline gradients (`.shiny-card`, `.shiny-pill`, `.shiny-button`).
-- `✅ Completed` **Adversarial Audit Remediation (U01–U14):** Fixed narrow viewport clipping, sticky scrolling, recovery isolation, reduced-motion controls, WCAG AAA contrast, keyboard accessibility, 3D card float separation, and image blob revocation.
+- `✅ Completed` **Adversarial Audit Remediation (U01–U14):** Fixed narrow viewport clipping, sticky scrolling, recovery isolation, reduced-motion controls, reported contrast pairs (AA minimum), keyboard accessibility, 3D card float separation, and image blob revocation.
 
 ---
 

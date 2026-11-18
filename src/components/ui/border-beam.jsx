@@ -20,7 +20,7 @@ export const BorderBeam = ({
     <div
       style={{
         "--size": size,
-        "--duration": duration,
+        "--duration": Math.min(duration, 4),
         "--anchor": anchor,
         "--border-width": borderWidth,
         "--color-from": colorFrom,
@@ -45,7 +45,7 @@ export const BorderBeam = ({
         }
         @media (prefers-reduced-motion: no-preference) {
           .border-beam-active::after {
-            animation: border-beam-anim calc(var(--duration) * 1s) infinite linear !important;
+            animation: border-beam-anim calc(var(--duration) * 1s) 1 linear !important;
             animation-delay: var(--delay) !important;
           }
         }

@@ -11,23 +11,9 @@ export default defineConfig({
     },
   },
   build: {
+    minify: 'terser',
+    terserOptions: { compress: { passes: 3 }, format: { comments: false } },
     outDir: 'dist',
     chunkSizeWarningLimit: 800,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'solana-core': ['@solana/web3.js'],
-          'spl-token': ['@solana/spl-token'],
-          'metaplex': ['@metaplex-foundation/mpl-token-metadata'],
-          'wallet': [
-            '@solana/wallet-adapter-base',
-            '@solana/wallet-adapter-phantom',
-            '@solana/wallet-adapter-react',
-            '@solana/wallet-adapter-react-ui',
-          ],
-          'ui-vendor': ['react', 'react-dom', 'lucide-react', 'clsx', 'tailwind-merge'],
-        },
-      },
-    },
   },
 });

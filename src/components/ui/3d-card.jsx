@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useRef } from "react";
+import React, { createContext, useState, useContext, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const MouseEnterContext = createContext([false, () => {}]);
@@ -10,6 +10,17 @@ export const CardContainer = ({
 }) => {
   const containerRef = useRef(null);
   const [isMouseEntered, setIsMouseEntered] = useState(false);
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reset = () => {
+      if (!preference.matches) return;
+      setIsMouseEntered(false);
+      if (containerRef.current) containerRef.current.style.transform = 'rotateY(0deg) rotateX(0deg)';
+    };
+    reset();
+    preference.addEventListener('change', reset);
+    return () => preference.removeEventListener('change', reset);
+  }, []);
 
   const handleMouseMove = (e) => {
     if (!containerRef.current) return;

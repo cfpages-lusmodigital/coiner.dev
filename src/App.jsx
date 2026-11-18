@@ -3,7 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { WalletProvider, ConnectionProvider } from '@solana/wallet-adapter-react';
-import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import WalletModalProvider from './components/DeferredWalletModalProvider';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 import CreatorPage from './components/CreatorPage';

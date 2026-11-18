@@ -2,7 +2,7 @@
 
 > **Status:** Live  
 > **Owner:** Syamsul Alam (`admin@alampintar.org`)  
-> **Last updated:** 2026-11-16  
+> **Last updated:** 2026-11-18  
 > **Project:** coiner.dev — Sovereign Solana Token Creator  
 > **Design guide:** `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub  
 > **Enforcement skill:** `ui-ux-design-contract`
@@ -81,7 +81,7 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 
 | Principle | Global application | Page evidence required |
 |---|---|---|
-| Fitts's Law | Primary actions (Connect Wallet, Create Token, Copy Address) feature large touch areas (> 48px height) placed along the natural pointer path. | Target size, spacing, and placement measured on each page. |
+| Fitts's Law | Primary actions use their component dimensions; authority switches have 64×44px activation areas. Do not infer every secondary action meets 44px from the primary CTA. | Target size, spacing, and placement measured on each page. |
 | Visual Hierarchy | Single dominant CTA per viewport with metallic gold gradient background (`from-amber-500 via-yellow-400 to-amber-500`); secondary inputs use deep obsidian panels with specular gradient outlines. | Heading order, contrast ratios, and action prominence. |
 | Von Restorff Effect | Distinctive glowing gold badges (`#f59e0b`, `text-amber-300`) and 3D metallic coin emblem isolate key status elements from the dark background without green clash. | One highlighted element per view with documented justification. |
 | Object Constancy | Header, navigation bar, wallet connection state, and network switch remain pinned in identical screen coordinates. | Persistent navigation and status placement across all views. |
@@ -91,7 +91,7 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 | Tabular Figures | Numerical figures and currency metrics use clean, unified sans typography (`font-sans tnum` or proportional sans) ensuring seamless typographic unity. | Font feature settings and numeric column alignments. |
 | Animate Only the Delta | When typing ticker or changing supply, only the affected text nodes in the preview card animate or re-render. | Selective DOM updates preserving parent card stability. |
 | Inertia | Accordion expansion, modal backdrop fading, and button hover states feature smooth deceleration curves. | Momentum, spring physics, and CSS cubic transitions. |
-| Multimodal Feedback | Token launch completion delivers simultaneous visual badge update, copy button label change, and toast notification. | Multiple confirmation channels for consequential blockchain steps. |
+| Multimodal Feedback | Token launch completion shows a success heading and mint details; copy actions show separate success or manual-copy feedback. | Multiple confirmation channels for consequential blockchain steps. |
 | Visual Cues | Clear focus rings (`focus:border-amber-400`), disabled button opacity (50%), and hover gold specular glow across all interactive controls. | Distinct interactive states for hover, active, focus, and disabled. |
 | Skeuomorphism | Live Dex Preview emulates a physical 3D metallic token card with avatar medallion and embossed gold badges to convey tangible asset ownership. | Real-world metaphors justifying improved conceptual clarity. |
 
@@ -99,7 +99,7 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 
 - **Token source:** Tailwind CSS v4 variables and custom classes in `src/index.css`.
 - **Typography:** Unified `Inter` / system sans-serif (`font-sans`) across all UI labels, inputs, tickers, stats, and badges, completely eliminating terminal monospace look.
-- **Color and contrast:** Deep obsidian (`#09090b` / `#030712`), card panels (`#111827`, `bg-gray-900`), border boundaries (`#27272a`, `border-zinc-800`), metallic gold (`#f59e0b`, `#fbbf24`, `#d97706`), specular white/gray gradient outlines (`.shiny-card`, `.shiny-pill`, `.shiny-button`). Zero green/emerald/cyan visual elements. Exceeds WCAG AAA contrast ratio (> 7:1) for all critical text.
+- **Color and contrast:** Deep obsidian (`#09090b` / `#030712`), card panels (`#111827`, `bg-gray-900`), border boundaries (`#27272a`, `border-zinc-800`), metallic gold (`#f59e0b`, `#fbbf24`, `#d97706`), specular white/gray gradient outlines (`.shiny-card`, `.shiny-pill`, `.shiny-button`). Zero green/emerald/cyan visual elements. Targets WCAG AA minimum text contrast. Verified wallet gradient endpoint ratios are 9.778:1 and 6.592:1; no blanket AAA certification is claimed.
 - **Spacing, radius, and shadow:** 8px base grid, rounded-xl (12px) for cards, rounded-lg (8px) for inputs, subtle gold glow shadows (`shadow-amber-500/20`).
 - **Dark mode:** Exclusive obsidian dark theme native to high-end crypto/Web3 environments.
 
@@ -107,14 +107,14 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 
 - **WCAG Level:** AA compliance.
 - **Keyboard navigation:** Full tab-order navigation across all form controls, modals, image upload triggers, and wallet buttons with visible focus rings.
-- **Touch targets:** Minimum 44x44px for all mobile interactive targets.
+- **Touch targets:** Authority switches use 64x44px activation targets with explicit visible focus rings. Other controls retain their existing page contracts.
 - **Reduced motion:** Obeys `prefers-reduced-motion: reduce` by disabling non-essential pulse, shimmer, and float animations.
 
 ### 4.4 Performance Budget
 
-- **Initial Requested JavaScript:** < 250KB gzipped (measured initial page load: 231.7KB gzipped across 4 initial chunks: `index` 40.6KB, `solana-core` 90.6KB, `wallet` 89.7KB, `ui-vendor` 10.9KB). Heavy post-launch libraries are dynamically deferred: `@metaplex-foundation/mpl-token-metadata` (71.7KB), `@solana/spl-token` (21.4KB), and `canvas-confetti` (4.3KB) are loaded only on demand during transaction assembly and success celebration.
-- **Initial Load:** First Contentful Paint (FCP) < 1.8s cold start (1,616ms measured in headless CDP trace).
-- **Interaction to Next Paint (INP):** < 50ms for live preview keystroke updates.
+- Initial required JavaScript target: **<200 KiB gzip**, measured from initial browser requests before any wallet/launch interaction. Lazy transaction, settlement, token-program, metadata and celebration modules are excluded only when the browser does not request them initially.
+- FCP and INP targets are performance goals, not certificates. A loopback headless paint time does not establish 4G performance, INP, physical-mobile GPU throughput or 60fps.
+- Verification commands and measured current byte totals live in the latest UI closure report; do not infer success from the entry-chunk size alone.
 
 ### 4.5 Motion Policy
 
@@ -144,7 +144,7 @@ The authoritative catalog is `KNOWLEDGE/DESIGN-GUIDE.md` in the OneDrive MD hub.
 - Warning / Danger: `#ef4444` (Red 500)
 
 ### Build Mandate
-Zero layout shifts (CLS = 0.00). All numeric currency metrics render in clean sans typography. Modals and overlays utilize hardware-accelerated transforms (`transform: translate3d`) to ensure steady 60fps frame rates on mobile Web3 browsers.
+Minimize layout shifts; no zero-CLS certification is claimed. All numeric currency metrics render in clean sans typography. Modals and overlays utilize hardware-accelerated transforms (`transform: translate3d`) to favor smooth rendering; physical-device frame-rate performance remains unmeasured.
 
 ### Composition Patterns
 - **Split-Screen Studio:** Desktop view splits into a 7-column configuration workspace and a 5-column sticky real-time preview terminal.
@@ -178,7 +178,7 @@ Two-column desktop grid (7:5 ratio): left column hosts the configuration form, r
 - States: Empty, Active typing, Wallet disconnected, Form invalid, Awaiting broadcast.
 
 #### Accessibility
-All inputs have associated `<Label>` elements with explicit `htmlFor` bindings. Keyboard tab index flows sequentially down the form before entering the preview column. Color contrast between `#9ca3af` text and `#030712` background exceeds 8.5:1.
+Basics inputs use linked labels; social inputs use explicit accessible names. The upload trigger supports Enter/Space and locked steps expose aria-disabled with a prerequisite explanation. Keyboard tab index flows sequentially down the form before entering the preview column. Contrast is checked against actual rendered foreground/background pairs; translucent surfaces require local sampling.
 
 #### Responsive Behavior
 Desktop: 2-column grid (`lg:grid-cols-12`). Tablet/Mobile: Stacks vertically (`grid-cols-1`) with the live preview card positioned below the form to maximize input ergonomics on touchscreens.
@@ -209,7 +209,7 @@ Labels clearly mark required fields with amber asterisks. Decimals input contain
 
 #### Verification
 - Build verification: `pnpm run build` completed cleanly (0 errors).
-- Live verification: Tested on `https://coiner.dev` across Devnet and Mainnet-beta.
+- Local production-build fixtures exercise Devnet/Mainnet UI selection; deployment evidence is tracked separately.
 
 ---
 
@@ -223,7 +223,7 @@ Centered modal dialog (`sm:max-w-lg max-h-[90dvh] overflow-y-auto`) with dark fr
 
 #### Components and States
 - Step list: 4 progress rows with dynamic icons (Circle, Spinning Loader, Amber Checkmark).
-- Error state: Red badge with raw RPC error description and "Try Again" recovery CTA (isolated from recovered results).
+- Error state: RPC error description and confirmation-status control. Broadcast errors hide Try Again until an explicit failed RPC result; pending, missing and unavailable status keep it hidden. A confirmed signature without mint context links to Solscan instead of inventing token success.
 - Success state: 3D Gold Coin, celebratory heading, token avatar preview, contract address copy box, Solscan link, RugCheck link, Raydium pool link, X share button.
 
 #### Accessibility
@@ -233,7 +233,7 @@ Dialog enforces `role="dialog"` and `aria-modal="true"`. Focus is trapped inside
 Scales down gracefully on mobile viewports with `max-h-[90dvh] overflow-y-auto` and scrollable raw error container.
 
 #### Motion and Feedback
-Spinning loaders use standard CSS `animate-spin` (1s linear infinite). Step completion transitions with a 200ms ease-out checkmark animation.
+Spinning loaders use standard CSS `animate-spin` (1s linear infinite). Decorative pulse/bounce/float settle within five seconds. Confetti stops on owner changes and when reduced-motion becomes active; it never starts under that preference.
 
 #### Content and Forms
 Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assembling Atomic Solana Transaction", "Awaiting Wallet Approval", "Broadcasting & Confirming on Solana".
@@ -242,7 +242,7 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 
 | Principle | Application | Evidence |
 |---|---|---|
-| Fitts's Law | Success action buttons (Solscan, RugCheck, Raydium) feature large 40px touch targets arranged in a 2-column grid. | Button grid layout in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
+| Fitts's Law | Success action buttons (Solscan, RugCheck, Raydium) use the shared button dimensions in a 2-column grid. The modal scrolls within 90dvh on short screens. | Button grid layout in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 | Visual Hierarchy | Celebratory "$TOKEN is Live!" heading in 24px bold text leads the success state above secondary action links. | DialogTitle styling in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 | Von Restorff Effect | 3D Gold Coin and celebratory heading draw primary visual focus upon successful launch. | Top visual badge container in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 | Object Constancy | Modal maintains consistent width and centered screen anchor throughout all state transitions. | DialogContent max-width class `sm:max-w-lg` |
@@ -257,8 +257,8 @@ Clear plain-English progress messages: "Pinning Logo & Metadata to IPFS", "Assem
 | Skeuomorphism | "Copied!" button simulates a physical stamping action with brief label feedback. | Temporary copied icon state change in [LaunchModal.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/LaunchModal.jsx) |
 
 #### Verification
-- Simulated Devnet launch verified through Phantom wallet signature and on-chain confirmation.
-- Copy-to-clipboard functionality verified across Chrome and Edge desktop browsers.
+- Local audit uses controlled wallet/RPC fixtures; signing is deliberately rejected. No actual token creation or on-chain finality is certified.
+- Chrome CDP fixtures exercise clipboard success and rejection; cross-browser native clipboard certification is not claimed.
 
 ---
 
@@ -317,21 +317,21 @@ Concise microcopy: "Admin • 0 SOL Fee", with hover tooltip clarifying verifica
 Educates first-time token creators on Solana rent exemption, the necessity of revoking authorities for Raydium liquidity pool creation, and RugCheck scoring criteria.
 
 #### Layout and Hierarchy
-Positioned below the primary studio form in the single-page layout. Features a 5-step visual roadmap (`StepGuide.jsx`) followed by an expandable accordion FAQ card (`FAQ.jsx`).
+Positioned below the primary studio form in the single-page layout. Features a seven-card visual guide (`StepGuide.jsx`) followed by an expandable accordion FAQ card (`FAQ.jsx`).
 
 #### Components and States
-- Step Roadmap: 5 numbered cards with custom icons (Wallet, Settings, Rocket, Coins, Flame).
-- FAQ Accordion: 6 expandable items with smooth chevron rotation and rich textual explanations.
+- Step Guide: seven cards with Wallet, Pencil, Settings, Upload, Link, ShieldCheck and Rocket icons.
+- FAQ Accordion: seven expandable items with smooth chevron rotation and rich textual explanations.
 - States: Collapsed, Expanded, Hovered.
 
 #### Accessibility
-Accordion triggers use native `<button>` elements with `aria-expanded` and `aria-controls` managed automatically by Radix UI Accordion primitive. Keyboard Space/Enter keys toggle expansion.
+Accordion uses the local stateful disclosure component (`src/components/ui/accordion.jsx`) with native buttons and aria-expanded. Keyboard Space/Enter keys toggle expansion.
 
 #### Responsive Behavior
-Roadmap cards arrange in a 5-column grid on desktop (`grid-cols-5`) and wrap to 2 columns on tablet and 1 column on mobile devices.
+Guide cards use one column on mobile, two at md, and three at lg (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`).
 
 #### Motion and Feedback
-Accordion content height expands and collapses smoothly using CSS animation (`data-[state=open]:animate-accordion-down`).
+Accordion content mounts/unmounts on expansion; the chevron rotates with a 200ms transition. No spring height interpolation is implemented.
 
 #### Content and Forms
 Provides direct, educational answers detailing why Freeze authority must be revoked for Raydium, how Mint authority revocation prevents inflation rugs, and how coiner.dev saves up to 80% vs competitors.
@@ -342,17 +342,17 @@ Provides direct, educational answers detailing why Freeze authority must be revo
 |---|---|---|
 | Fitts's Law | Accordion triggers span full container width (100%), allowing effortless click/tap targets anywhere along the bar. | AccordionTrigger width class in [FAQ.jsx#L48](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx#L48) |
 | Visual Hierarchy | Bold question headings in white text stand out against dark gray-950/60 accordion bars. | AccordionItem styling in [FAQ.jsx#L47](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx#L47) |
-| Von Restorff Effect | Step 5 "Raydium Liquidity" icon highlights in amber Flame icon denoting the final graduation milestone. | Flame icon color accent in [StepGuide.jsx#L46](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx#L46) |
-| Object Constancy | Step numbers (01 through 05) remain positioned consistently in top-left corners of cards. | Absolute/top position in StepGuide card layout |
-| Snapping | Step cards snap into equal-width grid columns (`gap-4`). | Grid classes `grid-cols-1 md:grid-cols-5 gap-4` in [StepGuide.jsx#L29](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx#L29) |
+| Von Restorff Effect | The final Create Your Token card uses a Rocket icon to identify the launch action. | Rocket icon in [StepGuide.jsx#L46](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx#L46) |
+| Object Constancy | Guide icon containers remain consistently aligned above headings. | Centered icon containers in StepGuide card layout |
+| Snapping | Step cards snap into equal-width grid columns (`gap-4`). | Grid classes `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` in [StepGuide.jsx#L29](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx#L29) |
 | Motion Blur | N/A: accordion animation is strictly vertical and limited to 200ms. | Accordion down transition is low-velocity without blur |
-| Natural Mapping | Roadmap numbers flow chronologically from left to right (01 Connect -> 02 Configure -> 03 Deploy -> 04 Verify -> 05 Liquidity). | Array index sequencing in [StepGuide.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx) |
-| Tabular Figures | Numerical rent values in FAQ answers (`0.0067 to 0.015 SOL`) use clean font-sans styling. | Clean sans tags around numeric values in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
-| Animate Only the Delta | Expanding one accordion item leaves sibling items and the parent container layout stable. | Radix Accordion localized expansion |
-| Inertia | Accordion expansion employs smooth spring-like height interpolation. | CSS height animation with ease-out cubic curve |
-| Multimodal Feedback | Expanding an item rotates the right-hand chevron 180 degrees while revealing text. | Animated chevron icon transition in Radix trigger |
+| Natural Mapping | Guide cards follow Connect -> Details -> Supply -> Image -> Social links -> Security -> Create, using icons rather than numbered milestones. | Array order in [StepGuide.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/StepGuide.jsx) |
+| Tabular Figures | Public fee values in FAQ answers use the shared sans stack. | Clean sans tags around numeric values in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
+| Animate Only the Delta | Expanding one item reveals its answer; later items move down in normal document flow. | Local disclosure state mounts the selected answer |
+| Inertia | Chevron rotation gives immediate expansion feedback; height changes use ordinary document flow. | Local conditional content and 200ms chevron transition |
+| Multimodal Feedback | Expanding an item rotates the right-hand chevron 180 degrees while revealing text. | Animated chevron icon transition in local trigger |
 | Visual Cues | Accordion triggers highlight with gold text color (`hover:text-amber-300`) on pointer hover. | Tailwind hover utility class `hover:text-amber-300` in [FAQ.jsx](file:///C:/Users/THINKPAD/coiner.dev/src/components/FAQ.jsx) |
-| Skeuomorphism | Numbered roadmap steps emulate a physical board game progression path. | Milestone layout with connected progression lines |
+| Skeuomorphism | Icon cards make configuration actions recognizable without a numbered roadmap. | Seven independent icon cards in StepGuide.jsx |
 
 #### Verification
 - Accordion keyboard accessibility verified with Tab, Space, and Enter keys.
@@ -378,9 +378,15 @@ Provides direct, educational answers detailing why Freeze authority must be revo
 
 ### 7.1 Verification Evidence
 - **Automated Validation:** Validated via `python C:\Users\THINKPAD\.commandcode\skills\ui-ux-design-contract\scripts\validate_design_md.py DESIGN.md` (0 errors).
-- **Compilation Check:** Verified via `pnpm run build` with Vite 6 (15.42s build, 0 errors, 2,895 modules transformed).
-- **Live Deployment:** Published on Cloudflare Pages at `https://coiner.dev` and `https://coiner-dev.pages.dev`.
+- **Compilation Check:** Run `pnpm exec vite build --outDir scratch/sol_ui_repair_build` for the current isolated production build; exact evidence is in `scratch/sol_ui_repair_evidence/`.
+- **Deployment:** Production targets are `https://coiner.dev` and `https://coiner-dev.pages.dev`. Publication and live verification must be tied to the delivered commit; historical deployment is not proof for a new build.
 
 ### 7.2 Open Questions & Next Iteration Considerations
 1. **Vanity Mint Generator UI:** In Phase 2, how should the Web Worker grinding controls be integrated into the studio layout without cluttering the primary form? (Recommendation: A collapsible "Advanced Vanity Address" accordion below the token basics).
 2. **Raydium Liquidity Pool Form:** In Phase 4, should coiner.dev host its own native CPMM pool creation form or continue providing direct 1-click deep links to Raydium? (Recommendation: Provide a seamless in-app 1-click pool creator to keep user flow entirely sovereign).
+
+## UI closure verification — 2026-11-18
+
+Current repair verification uses `scripts/verify-ui.mjs` and `scripts/accept-ui.mjs`. Browser fixtures cover narrow/short viewports, sticky header, recovery ownership, keyboard controls, motion, clipboard, blob ownership, palette and initial requests. Real pinning, approved minting, physical-wallet and screen-reader certification remain outside these probes. Decorative float/pulse/shimmer/beam movement settles within five seconds; reduced-motion disables it.
+
+Measured initial browser-requested JavaScript: **204,480 gzip bytes**, below the original 204,800-byte limit by 320 bytes. Full source-bound browser acceptance and the four-page/13-principle validator pass. Canonical closure ledger: `REPORT/REPORT-COINER-UI-CLOSURE-2026-11-18.md` in the OneDrive MD hub. Wallet-picker text uses a dark surface and confetti is cancelled across ownership/preference changes.

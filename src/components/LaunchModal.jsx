@@ -1,5 +1,5 @@
 // src/components/LaunchModal.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useConnection } from '@solana/wallet-adapter-react';
 import { checkSignatureStatus } from '@/lib/solana';
 import { GoldCoin3D } from '@/components/ui/GoldCoin3D';
@@ -93,6 +93,8 @@ const LaunchModal = ({
   const [sigCheckMessage, setSigCheckMessage] = useState('');
   const [recoveredResult, setRecoveredResult] = useState(null);
   const [successImageUrl, setSuccessImageUrl] = useState(null);
+  const [retryAuthorized, setRetryAuthorized] = useState(false);
+  const confirmationOwner = useRef(null);
 
   const isWorking =
     status === 'uploading' ||
@@ -115,11 +117,12 @@ const LaunchModal = ({
   }, [tokenData?.image]);
 
   // U02: Reset recovered result and increment attempt ID when starting a new launch attempt
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (status === 'uploading' || status === 'preparing') {
       attemptIdRef.current += 1;
       setRecoveredResult(null);
       setSigCheckMessage('');
+      setIsCheckingSig(false);
     }
   }, [status]);
 
@@ -133,13 +136,17 @@ const LaunchModal = ({
   // Trigger celebration confetti on successful launch (Pure Gold & Silver palette)
   // U03: Respect prefers-reduced-motion guard; dynamically load confetti to optimize initial bundle
   useEffect(() => {
+    let cancelled = false;
+    let celebration;
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const stop = () => { if (preference.matches) celebration?.reset(); };
+    preference.addEventListener('change', stop);
     if (!isWorking && (status === 'success' || (status === 'error' && Boolean(recoveredResult)))) {
-      if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-        return;
-      }
       import('canvas-confetti')
         .then((module) => {
+          if (cancelled || preference.matches) return;
           const confettiFn = module.default || module;
+          celebration = confettiFn;
           confettiFn({
             particleCount: 100,
             spread: 80,
@@ -152,20 +159,28 @@ const LaunchModal = ({
           // Safe fallback if canvas is unavailable
         });
     }
+    return () => {
+      cancelled = true;
+      celebration?.reset();
+      preference.removeEventListener('change', stop);
+    };
   }, [status, recoveredResult, isWorking]);
 
   // U12: Asynchronous clipboard copy with error handling and timer cleanup
   const copyToClipboard = async (text) => {
+    const owner = confirmationOwner.current;
     try {
       if (!navigator?.clipboard?.writeText) {
         throw new Error('Clipboard API not supported');
       }
       await navigator.clipboard.writeText(text);
+      if (confirmationOwner.current !== owner) return;
       setCopied(true);
       setCopyError(false);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch (err) {
+      if (confirmationOwner.current !== owner) return;
       console.warn('Clipboard write failed:', err);
       setCopied(false);
       setCopyError(true);
@@ -203,6 +218,19 @@ const LaunchModal = ({
     rawErrorMessage.match(/[1-9A-HJ-NP-Za-km-z]{64,88}/)?.[0] ||
     '';
   const launchContext = error?.launchContext;
+  // Invalidate awaited responses whenever the visible transaction owner changes.
+  useLayoutEffect(() => {
+    const owner = { signature: broadcastSig, connection, network, status, open };
+    confirmationOwner.current = owner;
+    setIsCheckingSig(false);
+    setRetryAuthorized(false);
+    setSigCheckMessage('');
+    setRecoveredResult(null);
+    setCopied(false);
+    setCopyError(false);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    return () => { if (confirmationOwner.current === owner) confirmationOwner.current = null; };
+  }, [broadcastSig, connection, network, status, open, result, error]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !isWorking && setOpen(v)}>
@@ -304,29 +332,27 @@ const LaunchModal = ({
                       className="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black text-xs h-7 font-bold font-sans"
                       onClick={async () => {
                         const capturedAttempt = attemptIdRef.current;
-                        const capturedSig = broadcastSig;
+                        const owner = confirmationOwner.current;
+                        const isCurrent = () => confirmationOwner.current === owner && attemptIdRef.current === capturedAttempt;
                         setIsCheckingSig(true);
+                        setRetryAuthorized(false);
                         setSigCheckMessage('Checking on-chain confirmation status...');
                         try {
                           const statusResult = await checkSignatureStatus(connection, broadcastSig);
-                          if (attemptIdRef.current !== capturedAttempt || broadcastSig !== capturedSig) {
+                          if (!isCurrent()) {
                             return; // Discard stale async callback from previous attempt
                           }
                           if (statusResult?.kind === 'confirmed') {
                             setSigCheckMessage('Confirmed on-chain! Loading token details...');
-                            if (launchContext) {
+                            if (launchContext?.mintAddress) {
                               setRecoveredResult(launchContext);
                             } else {
-                              setRecoveredResult({
-                                signature: broadcastSig,
-                                mintAddress: tokenData?.mintAddress || '',
-                                name: tokenData?.name,
-                                symbol: tokenData?.symbol,
-                              });
+                              setSigCheckMessage('Transaction confirmed. Token details are unavailable; inspect the transaction on Solscan. Do not retry.');
                             }
                           } else if (statusResult?.kind === 'pending') {
                             setSigCheckMessage('Transaction is still pending on-chain. Please check again in a few moments.');
                           } else if (statusResult?.kind === 'failed') {
+                            setRetryAuthorized(true);
                             setSigCheckMessage(`Transaction failed on-chain: ${JSON.stringify(statusResult.error || 'Custom error')}`);
                           } else if (statusResult?.kind === 'rpc_unavailable') {
                             setSigCheckMessage('RPC node unavailable: ' + statusResult.error);
@@ -334,11 +360,11 @@ const LaunchModal = ({
                             setSigCheckMessage('Transaction not yet confirmed on RPC. Please verify on Solscan before retrying.');
                           }
                         } catch (checkErr) {
-                          if (attemptIdRef.current === capturedAttempt && broadcastSig === capturedSig) {
+                          if (isCurrent()) {
                             setSigCheckMessage('RPC check error: ' + checkErr.message);
                           }
                         } finally {
-                          if (attemptIdRef.current === capturedAttempt && broadcastSig === capturedSig) {
+                          if (isCurrent()) {
                             setIsCheckingSig(false);
                           }
                         }
@@ -362,7 +388,7 @@ const LaunchModal = ({
               >
                 Close
               </Button>
-              {onRetry && (
+              {onRetry && (!broadcastSig || retryAuthorized) && !isCheckingSig && (
                 <Button
                   className="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-bold font-sans"
                   onClick={onRetry}

@@ -377,6 +377,8 @@ const TokenForm = ({
                   onClick={() => handleStepClick(s.id)}
                   aria-label={`Step ${s.id}: ${s.name} (${s.description})`}
                   aria-current={isActive ? 'step' : undefined}
+                  aria-disabled={s.id > 1 && !isStep1Valid ? true : undefined}
+                  title={s.id > 1 && !isStep1Valid ? 'Complete Token Basics first' : undefined}
                   className={`flex items-center justify-center sm:justify-start gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all ${
                     isActive
                       ? 'bg-amber-950/60 border border-amber-500/60 text-amber-200 ring-1 ring-amber-500/30'

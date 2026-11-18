@@ -10,7 +10,7 @@
 .wallet-adapter-button,
 .wallet-adapter-modal-middle-button {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-  color: #000000 !important; /* high-contrast black on gold for WCAG AAA */
+  color: #000000 !important; /* AA contrast at both gradient endpoints */
   font-family: inherit !important;
   font-weight: 700 !important;
   border-radius: 0.75rem !important; /* rounded-xl */
@@ -58,6 +58,7 @@
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button {
+  background-image: none !important;
   background-color: #111827 !important; /* bg-gray-900 */
   border: 1px solid #1f2937 !important;
   border-radius: 0.75rem !important;
@@ -68,6 +69,7 @@
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background-image: none !important;
   background-color: rgba(245, 158, 11, 0.12) !important;
   border-color: #f59e0b !important;
   color: #ffffff !important;
@@ -231,5 +233,12 @@
     animation: none !important;
   }
 }
+
+/* Decoration settles within five seconds; busy spinners remain status indicators. */
+.animate-float { animation-iteration-count: 1; }
+.animate-pulse { animation-iteration-count: 2; }
+.animate-bounce { animation-iteration-count: 3; }
+[class*="animate-[shimmer_"] { animation-iteration-count: 1; }
+
 
 
