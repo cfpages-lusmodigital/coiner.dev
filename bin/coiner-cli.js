@@ -27,6 +27,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  VersionedTransaction,
   ComputeBudgetProgram,
   SYSVAR_RENT_PUBKEY,
   clusterApiUrl,
@@ -72,6 +73,25 @@ import { SCOUT_UPLOAD_TOKEN_FORMAT } from '../src/lib/ipfsMetadata.js';
 import { publishScoutMetadata } from '../src/lib/scoutMetadata.js';
 
 const SCOUT_DRY_RUN_METADATA_URI = 'https://example.invalid/scout-dry-run/sample-token-metadata-for-local-tests.json';
+
+function readExplicitSigner(keypair, configured) {
+  if (keypair === undefined && configured === undefined) {
+    throw new Error('Pass --keypair or inject SOLANA_KEYPAIR_JSON for signed execution.');
+  }
+  try {
+    if (keypair !== undefined) {
+      if (!keypair.trim() || keypair.trim().startsWith('[')) throw new Error();
+      return loadKeypair(keypair);
+    }
+    if (configured.length > 512) throw new Error();
+    const bytes = JSON.parse(configured);
+    if (!Array.isArray(bytes) || bytes.length !== 64 ||
+      bytes.some(value => !Number.isInteger(value) || value < 0 || value > 255)) throw new Error();
+    return Keypair.fromSecretKey(Uint8Array.from(bytes));
+  } catch {
+    throw new Error('Could not load the explicitly selected signer.');
+  }
+}
 
 // Program constants
 export const METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -238,10 +258,10 @@ USAGE:
   node bin/coiner-cli.js <command> [options]
 
 COMMANDS:
-  create       Build and broadcast (or simulate) a new Solana SPL token
+  create       Build, simulate or submit a standard SPL mint or a Pump launch
   estimate     Estimate exact on-chain rent and platform fees
   balance      Check SOL balance of connected or specified keypair
-  watch        Monitor Pump.fun bonding curve & execute automated tranche exits (TP/SL)
+  watch        Resume or monitor a Pump position and sell on the active venue
   scout        Autonomous Trend Scanner & Asset Harvester (DexScreener + AI Bridge)
   wallet       Inspect and cryptographically verify local Solana keypair authority
   help         Display this help message
@@ -294,6 +314,15 @@ EXAMPLES:
   # Create real token on Devnet with explicit keypair
   node bin/coiner-cli.js create --keypair ~/.config/solana/id.json --name "Sol Cat" --symbol "SCAT" --metadata-uri "https://gateway.pinata.cloud/ipfs/QmExample" --network devnet
 
+  # Sign and simulate without broadcasting
+  node bin/coiner-cli.js create --simulate --keypair <path> --name "Devnet Fixture" --symbol "DFIX" --metadata-uri <url>
+
+  # Launch a SOL-quoted Pump position and start its exit watcher
+  node bin/coiner-cli.js create --target pump --keypair <path> --name "Devnet Fixture" --symbol "DFIX" --metadata-uri <url> --initial-buy-sol 0.02 --max-spend-sol 0.15 --position-file <private-path> --auto-exit
+
+  # Resume one position or explicitly sell all tracked tokens
+  node bin/coiner-cli.js watch --keypair <path> --position-file <private-path> --liquidate-now
+
   # Monitor and auto-exit a Pump.fun token (dry-run)
   node bin/coiner-cli.js watch --mint 4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R --tp1 2.0 --tp2 3.5 --sl 0.70 --dry-run
 
@@ -327,6 +356,10 @@ const PARSE_OPTIONS = {
   'burn-lp': { type: 'boolean', default: false },
   mint: { type: 'string' },
   'auto-exit': { type: 'boolean', default: false },
+  simulate: { type: 'boolean', default: false },
+  'position-file': { type: 'string' },
+  'max-spend-sol': { type: 'string' },
+  'liquidate-now': { type: 'boolean', default: false },
   tp1: { type: 'string' },
   tp2: { type: 'string' },
   sl: { type: 'string' },
@@ -344,6 +377,42 @@ const PARSE_OPTIONS = {
   'import-clipboard': { type: 'boolean', default: false },
   force: { type: 'boolean', default: false },
 };
+
+function pumpOptions(values, priority, payer) {
+  const tp1 = parseStrictDecimal(values.tp1 || '2.0', 'tp1', { min: 1, max: 1000 });
+  const tp2 = parseStrictDecimal(values.tp2 || '3.5', 'tp2', { min: tp1, max: 1000 });
+  const sl = parseStrictDecimal(values.sl || '0.70', 'sl', { min: 0, max: 0.9999 });
+  const timeout = parseStrictDecimal(values.timeout, 'timeout', { min: 0, max: 1440 });
+  const pollMs = parseStrictDecimal(values['poll-ms'], 'poll-ms', { min: 100, max: 60000 });
+  const maxIterations = parseStrictDecimal(values['max-iterations'], 'max-iterations', {
+    min: 0, max: 100000, allowZero: true,
+  });
+  if (!Number.isInteger(pollMs) || !Number.isInteger(maxIterations)) {
+    throw new Error('Polling interval and iteration limit must be whole numbers.');
+  }
+  if (!values.simulate && !values['position-file']?.trim()) {
+    throw new Error('Pass --position-file with a private location for this position.');
+  }
+  return {
+    payer, network: values.network, positionFile: values['position-file'],
+    priority, simulate: values.simulate, liquidateNow: values['liquidate-now'],
+    settings: {
+      tp1: Math.round(tp1 * 10000), tp2: Math.round(tp2 * 10000), stopLoss: Math.round(sl * 10000),
+      timeoutMs: Math.ceil(timeout * 60000), pollMs,
+      maxIterations: maxIterations || Math.ceil(timeout * 60000 / pollMs) + Math.ceil(300000 / pollMs),
+      slippage: parseStrictDecimal(values.slippage, 'slippage', { min: 0, max: 50, allowZero: true }),
+    },
+  };
+}
+
+function printPumpResult(result) {
+  console.log(JSON.stringify(result, null, 2));
+  if (!result.success) process.exitCode = 2;
+}
+
+function safeRpcError(error) {
+  return error.message.replace(/https?:\/\/[^\s"'<>]+/gi, '[URL redacted]');
+}
 
 function validateMetadataUri(value) {
   const uri = (value || '').trim();
@@ -953,6 +1022,8 @@ export async function runWatchLoop({
  * Main execution entrypoint
  */
 export async function run(args = process.argv.slice(2)) {
+  const configuredSigner = process.env.SOLANA_KEYPAIR_JSON;
+  delete process.env.SOLANA_KEYPAIR_JSON;
   const isJsonRequested = args.includes('--json');
 
   let parsed;
@@ -1034,7 +1105,11 @@ export async function run(args = process.argv.slice(2)) {
 
   const isMainnet = values.network === 'mainnet-beta';
   const rpcUrl = values.rpc || clusterApiUrl(values.network);
-  const connection = new Connection(rpcUrl, 'confirmed');
+  const connection = new Connection(rpcUrl, {
+    commitment: 'confirmed',
+    disableRetryOnRateLimit: true,
+    fetch: (url, options) => fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(12000) }),
+  });
 
   // Command: balance
   if (command === 'balance') {
@@ -1371,6 +1446,17 @@ try {
   // Command: watch
   if (command === 'watch') {
     try {
+      if (!values['dry-run']) {
+        if (values.simulate) throw new Error('Use watch --dry-run for a fixture or create --simulate for a signed chain simulation.');
+        if (!values.mint && !values['position-file']) throw new Error('Pass --mint or resume an existing --position-file.');
+        const payer = readExplicitSigner(values.keypair, configuredSigner);
+        const { runPumpLifecycle } = await import('../src/lib/pumpLifecycle.js');
+        printPumpResult(await runPumpLifecycle(connection, {
+          ...pumpOptions(values, PRIORITY_FEE_MAP[priorityLower], payer),
+          mint: values.mint ? new PublicKey(values.mint) : undefined,
+        }));
+        return;
+      }
       if (!values.mint) {
         throw new Error('Target Token Mint Address (--mint) is required for watch command.');
       }
@@ -1381,14 +1467,7 @@ try {
         throw new Error(`Invalid mint public key: "${values.mint}". Must be base58 public key.`);
       }
 
-      let payerKeypair;
-      if (values.keypair) {
-        payerKeypair = loadKeypair(values.keypair);
-      } else if (values['dry-run']) {
-        payerKeypair = Keypair.generate();
-      } else {
-        throw new Error('Keypair (--keypair) is required for live watch/exit execution.');
-      }
+      const payerKeypair = Keypair.generate();
 
       const tp1 = parseStrictDecimal(values.tp1 || '2.0', 'tp1', { min: 1.0 });
       const tp2 = parseStrictDecimal(values.tp2 || '3.5', 'tp2', { min: tp1 });
@@ -1417,9 +1496,9 @@ try {
       });
     } catch (err) {
       if (isJson) {
-        console.error(JSON.stringify({ success: false, error: err.message }, null, 2));
+        console.error(JSON.stringify({ success: false, error: safeRpcError(err) }, null, 2));
       } else {
-        console.error(`Error: ${err.message}`);
+        console.error(`Error: ${safeRpcError(err)}`);
       }
       process.exitCode = 1;
     }
@@ -1439,7 +1518,7 @@ try {
         console.log(`\n🔎 Scanning Solana meme trends on DexScreener (limit: ${limit})...`);
       }
 
-      const autoPin = values['auto-launch'] && !values['dry-run'] && values['metadata-uri'] === undefined;
+      const autoPin = values['auto-launch'] && !values['dry-run'] && !values.simulate && values['metadata-uri'] === undefined;
       let uploadToken;
       if (autoPin) {
         uploadToken = process.env.COINER_SCOUT_UPLOAD_TOKEN;
@@ -1545,7 +1624,7 @@ try {
         }
 
         // Fail-closed if image validation failed and no explicit metadata URI provided (S04)
-        if (!top.staged.imageValid && values['metadata-uri'] === undefined) {
+        if (!top.staged.imageValid && !values.simulate && values['metadata-uri'] === undefined) {
           throw new Error(`Auto-launch aborted: Downloaded image failed validation for $${top.staged.symbol}. Provide an explicit --metadata-uri or select another candidate.`);
         }
 
@@ -1555,7 +1634,7 @@ try {
         
         if (autoPin) {
           scoutUpload = { staged: top.staged, token: uploadToken };
-        } else if (values['dry-run'] && values['metadata-uri'] === undefined) {
+        } else if ((values['dry-run'] || values.simulate) && values['metadata-uri'] === undefined) {
           values['metadata-uri'] = SCOUT_DRY_RUN_METADATA_URI;
         }
 
@@ -1588,19 +1667,48 @@ try {
   // Command: create
   if (command === 'create') {
     try {
-      if (values.target && values.target.toLowerCase() !== 'spl') {
-        if (values.target.toLowerCase() === 'pump') {
-          throw new Error(
-            'Target "pump" on-chain deployment is currently disabled pending native bonding-curve creation instruction. To deploy a standard SPL token, omit --target or use --target spl. Deployment halted to protect funds.'
-          );
+      if (values.simulate && values['dry-run']) throw new Error('Choose either --simulate or --dry-run.');
+      if (values.target.toLowerCase() === 'pump') {
+        if (values['dry-run']) throw new Error('Use --simulate with an explicit funded signer for a Pump launch.');
+        if (values['keep-freeze'] || values['keep-mint'] || values.mutable ||
+          values.decimals !== '6' || values.supply !== '1000000000' || values['quote-sol'] !== undefined || values['burn-lp']) {
+          throw new Error('Pump launches use the Pump program’s fixed supply, decimals and authorities.');
         }
-        throw new Error(`Unsupported deployment target "${values.target}". Allowed targets: spl.`);
+        const payer = readExplicitSigner(values.keypair, configuredSigner);
+        const options = pumpOptions(values, PRIORITY_FEE_MAP[priorityLower], payer);
+        const name = (values.name || '').trim();
+        const symbol = (values.symbol || '').trim().toUpperCase();
+        if (!name || !symbol || getUtf8ByteLength(name) > 32 || getUtf8ByteLength(symbol) > 10) {
+          throw new Error('Pump launches require a name up to 32 UTF-8 bytes and a symbol up to 10 UTF-8 bytes.');
+        }
+        const buyLamports = values['initial-buy-sol'] === undefined ? 0n : calculateRawAmount(values['initial-buy-sol'], 9);
+        if (!values['max-spend-sol']) throw new Error('Set --max-spend-sol for a Pump launch.');
+        const maxSpend = calculateRawAmount(values['max-spend-sol'], 9);
+        if (buyLamports >= maxSpend || ((values['auto-exit'] || values['liquidate-now']) && buyLamports === 0n)) {
+          throw new Error('Set --max-spend-sol above the initial buy. Auto-exit requires an initial buy.');
+        }
+        const uri = async () => scoutUpload
+          ? validateMetadataUri(await publishScoutMetadata(scoutUpload.staged, {
+            name, symbol, decimals: 6, supply: '1000000000', token: scoutUpload.token,
+          }))
+          : validateMetadataUri(values['metadata-uri']);
+        const { runPumpLifecycle } = await import('../src/lib/pumpLifecycle.js');
+        printPumpResult(await runPumpLifecycle(connection, {
+          ...options, launch: { name, symbol, uri, buyLamports, maxSpend }, autoExit: values['auto-exit'],
+        }));
+        return;
+      }
+      if (values.target && values.target.toLowerCase() !== 'spl') {
+        throw new Error(`Unsupported deployment target "${values.target}". Allowed targets: spl, pump.`);
       }
 
       if (values['initial-buy-sol']) {
         throw new Error(
           'Option --initial-buy-sol is only valid for Pump.fun launches (--target pump). Standard SPL tokens do not have an embedded bonding curve initial buy.'
         );
+      }
+      if (values['liquidate-now'] || values['position-file'] !== undefined || values['max-spend-sol'] !== undefined) {
+        throw new Error('Position and liquidation options require a Pump launch.');
       }
 
       if (values['auto-exit'] && !values['dry-run']) {
@@ -1649,6 +1757,10 @@ try {
         } else {
           payerKeypair = Keypair.generate();
         }
+      } else if (values.simulate) {
+        const { verifySolanaCluster } = await import('../src/lib/pumpPosition.js');
+        await verifySolanaCluster(connection, values.network);
+        payerKeypair = readExplicitSigner(values.keypair, configuredSigner);
       } else {
         if (!values.keypair) {
           throw new Error('A keypair file is required for live token deployment (--keypair <path>). Set $env:SOLANA_KEYPAIR or pass --keypair.');
@@ -1967,9 +2079,20 @@ try {
       if (rawTx.length > 1232) {
         throw new Error(`Transaction size (${rawTx.length} bytes) exceeds Solana MTU limit of 1232 bytes.`);
       }
+      if (values.simulate) {
+        const result = await connection.simulateTransaction(VersionedTransaction.deserialize(rawTx), {
+          commitment: 'confirmed', sigVerify: true,
+        });
+        console.log(JSON.stringify({
+          success: result.value.err === null, status: 'simulated', network: values.network,
+          mint: mintPubkey.toBase58(), error: result.value.err, unitsConsumed: result.value.unitsConsumed,
+        }, null, 2));
+        if (result.value.err !== null) process.exitCode = 2;
+        return;
+      }
 
       if (!isJson) {
-        console.log(`Broadcasting transaction to ${rpcUrl}...`);
+        console.log('Broadcasting signed transaction...');
       }
 
       const signature = await connection.sendRawTransaction(rawTx, {
@@ -2045,41 +2168,11 @@ try {
         console.log(`Raydium LP:   ${result.raydiumUrl}\n`);
       }
 
-      if (values['auto-exit']) {
-        if (!isJson) {
-          console.log(`\n🚀 Transitioning immediately to Automated Exit Watcher for $${symbol}...`);
-        }
-        const tp1 = parseStrictDecimal(values.tp1 || '2.0', 'tp1', { min: 1.0 });
-        const tp2 = parseStrictDecimal(values.tp2 || '3.5', 'tp2', { min: tp1 });
-        const sl = parseStrictDecimal(values.sl || '0.70', 'sl', { min: 0.0, max: 1.0 });
-        if (sl >= 1.0) throw new Error('Invalid sl: must be less than 1.0 (e.g. 0.70)');
-        const timeout = parseStrictDecimal(values.timeout || '25', 'timeout', { min: 0.0 });
-        const slippage = parseStrictDecimal(values.slippage || '5', 'slippage', { min: 0.0, max: 50.0, allowZero: true });
-        const pollMs = Math.floor(parseStrictDecimal(values['poll-ms'] || '2000', 'poll-ms', { min: 100 }));
-        const maxIter = Math.floor(parseStrictDecimal(values['max-iterations'] || '0', 'max-iterations', { min: 0, allowZero: true }));
-
-        await runWatchLoop({
-          connection,
-          mintPubkey,
-          payerKeypair,
-          tp1Multiplier: tp1,
-          tp2Multiplier: tp2,
-          slMultiplier: sl,
-          timeoutMinutes: timeout,
-          slippagePercent: slippage,
-          pollMs,
-          maxIterations: maxIter,
-          isDryRun: false,
-          isJson,
-          priority: priorityLower,
-          network: values.network,
-        });
-      }
     } catch (err) {
       if (isJson) {
-        console.error(JSON.stringify({ success: false, error: err.message }, null, 2));
+        console.error(JSON.stringify({ success: false, error: safeRpcError(err) }, null, 2));
       } else {
-        console.error(`Error: ${err.message}`);
+        console.error(`Error: ${safeRpcError(err)}`);
       }
       process.exitCode = 1;
     }

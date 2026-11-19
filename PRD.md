@@ -407,14 +407,14 @@ The engine enforces four automated triggers evaluated on every block confirmatio
 | Gate ID | Subsystem / Feature | Target Milestone | Acceptance Criteria | Status |
 |---|---|---|---|---|
 | **GATE-PRD** | PRD Specifications | Complete Architecture | Sections 1–16 fully codified with mathematical, cognitive, and protocol schemas | `✅ Completed` |
-| **GATE-PUMP-DATA** | Curve PDA & Account Parser | `src/lib/pump.js` | 49/81-byte layout parsed; `creator` extracted; spot price and progress derived | `✅ Completed` |
-| **GATE-SELL-IX** | Pump Sell Instruction Builder | `src/lib/pump.js` | Modern 14-account official layout matching Pump IDL verified | `✅ Completed` |
-| **GATE-CLI-WATCH** | CLI Watcher & Auto-Exit | `bin/coiner-cli.js watch` | Sequential polling loop, TP1/TP2/SL/Timeout triggers, dry-run simulation verified | `✅ Completed` |
-| **GATE-CREATE-EXIT** | Unified Launch & Exit Flag | `coiner-cli create` | Fail-closed guards for unverified Pump targets; strict numeric bounds enforced | `✅ Completed` |
+| **GATE-PUMP-DATA** | Curve and pool state | `src/lib/pumpLifecycle.js` | Check the Pump owner, mint program and SOL quote. Resolve the canonical PumpSwap pool after migration. | Verified on local Devnet fork |
+| **GATE-SELL-IX** | Pump and PumpSwap sell instructions | `src/lib/pumpLifecycle.js` | SDK fee-aware quotes, positive slippage floor and reconciled finalized token and wallet deltas. | Verified on local Devnet fork |
+| **GATE-CLI-WATCH** | CLI Watcher & Auto-Exit | `bin/coiner-cli.js watch` | Serial trades, same-signature retries, resumed receipts and automatic timeout exit. | Fixtures and local Devnet fork passed |
+| **GATE-CREATE-EXIT** | Unified Launch & Exit Flag | `coiner-cli create --target pump --auto-exit` | Finalize Token-2022 launch and initial buy, watch the funded position, then finalize its exit. | Verified on local Devnet fork |
 | **GATE-SCOUT** | Trend Scanner & Asset Harvester | `bin/coiner-cli.js scout` | Ingests DexScreener & Pump.fun feeds, extracts images, tickers, and viral social links | `✅ In Progress` |
 | **GATE-AI-BRIDGE** | AI Bridge Cognitive Engine | `src/lib/ai-bridge.js` | Connects to `ai-bridge-codev` cascade; distills narrative, lore, virality, and ticker variations | `✅ In Progress` |
 | **GATE-WALLET-CHECK** | Non-Custodial Keypair Validator | `coiner-cli wallet` | Inspects keypair public key against `2di...maV`, checks live SOL balance, zero-leakage | `✅ In Progress` |
-| **GATE-SOL-REVIEW** | Engineer Sol Adversarial Review | Herdr `sol-coiner-exit` & `sol-coiner-ui` | All architecture, cognitive, wallet, and UI invariants audited by Engineer Sol; 14 findings remediated and verified | `✅ Completed` |
+| **GATE-SOL-REVIEW** | Independent review | Scout, wallet, UI and exit review ledgers | Use current runtime evidence per subsystem and recheck material CLI changes. | Prior findings remain historical where superseded |
 | **GATE-UI-REDESIGN** | Obsidian, White & Gold UI Redesign | `src/` & `DESIGN.md` | Pure obsidian, white & gold aesthetic, unified sans typography, zero green/cyan, all 14 audit findings remediated, acceptance test 12/12 gates PASS | `✅ Completed` |
 | **GATE-BUILD-QUAL** | Production Build & Verification | Repository-wide | `pnpm run build` passes 100% clean; zero regressions | `✅ Completed` |
 
@@ -517,7 +517,9 @@ The autonomous pipeline executes across 5 distinct phases:
 2. **AI Bridge Synthesis**: Ingests narrative context into `ai-bridge-codev` to synthesize optimized token name, ticker, and viral lore.
 3. **Asset Staging**: Creates a fresh run under the operator-owned staging parent. Writes the validated raster image and a local metadata preview into an exclusive candidate directory. The preview is for inspection before publication.
 4. **Published Metadata and SPL Mint**: For live auto-launch without an explicit URI, send the validated image and token fields to the authenticated Pages proxy. The proxy pins the image and then constructs and pins Metaplex JSON. Create uses the returned metadata URI only after both CIDs validate. A validation or publishing failure stops before signing. An explicit `--metadata-uri` uses the operator's pre-published JSON. A dry run skips pinning and uses the explicit URI or a reserved simulation URI.
-5. **Exit Watcher**: Live `watch` operates on an existing supported Pump.fun mint. SPL creation rejects live `--auto-exit`.
+5. **Tradable Pump Launch and Exit**: `--target pump` launches a SOL-quoted Token-2022 coin. Supply an initial buy and `--auto-exit` to manage that position from the same CLI invocation. The watcher sells on the active bonding curve or routes to its canonical PumpSwap pool after migration. Standalone SPL creation still rejects live `--auto-exit`.
+
+The [CLI operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) explains the position file, confirmation, restart and manual liquidation. [Pump and Solana lifecycle reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 
 ---
 
@@ -532,7 +534,7 @@ The autonomous pipeline executes across 5 distinct phases:
 - ✅ Verified: Production Pages uses encrypted scout and Pinata bindings. Anonymous requests and wrong bearers receive 401.
 - ✅ Verified: The compiled Pages handler uses workerd-compatible manual redirects and rejects non-success statuses. Pinning diagnostics exclude credentials and request content.
 - ✅ Verified: An authenticated production fixture pinned both files. The public JSON points to the returned image CID, and the retrieved image matches the original bytes.
-- ✅ Verified: The CLI serialized a transaction with valid disposable payer and mint signatures. Funded Devnet execution remains open because the public faucet returned HTTP 410.
+- ✅ Verified: A funded local Devnet fork executed the CLI’s signed SPL simulation and returned no instruction error. Public Devnet funding returned HTTP 410, and Mainnet execution remains untested.
 - ✅ Verified: The standalone Worker serves no Coiner route. Its automatic Git builds are paused, and both Pages deployments succeeded on the subsequent commit.
 - ✅ Verified: Pinata revoked the legacy Coiner admin credential. Production uses the scoped server-side JWT. Legacy variables were removed from Pages and Worker build settings.
 

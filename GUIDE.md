@@ -157,6 +157,23 @@ To consistently win in the Solana trenches, you must stop viewing the market sol
   - Production readiness checks include HTTP 401 for anonymous uploads, a small authorized image and metadata pin, then public gateway retrieval of both CIDs. Use the five local scout regression suites before changes to signing or publishing.
   - To separate staging and launch, upload the selected image and metadata first, then provide the published JSON with `--metadata-uri <url>`. Use `watch` separately for an existing supported Pump.fun mint.
   - Total outlay: **~0.10 SOL**. Remaining cash: **~0.90 SOL**.
+
+### CLI lifecycle verification and recovery
+
+Use the same position file and signer throughout a SOL-quoted Pump launch. The file keeps the mint, pending signature, signed transaction bytes and finalized receipts. Place it in a private directory on the machine that runs the watcher. The file contains no signer private key.
+
+```powershell
+# Replace the placeholders with a signer path, metadata URL and position path
+pnpm cli create --network devnet --keypair <path> --simulate --name "Devnet Fixture" --symbol DFIX --metadata-uri <url>
+pnpm cli create --network devnet --keypair <path> --target pump --name "Devnet Fixture" --symbol DFIX --metadata-uri <url> --initial-buy-sol 0.02 --max-spend-sol 0.15 --auto-exit --position-file <private-path> --json
+pnpm cli watch --network devnet --keypair <path> --position-file <private-path> --json
+```
+
+Use either `--keypair` or an injected `SOLANA_KEYPAIR_JSON`. Add `--rpc http://127.0.0.1:18999` for the local Devnet fork. With the default endpoint, the second command submits to public Devnet. Add `--liquidate-now` to `watch` for an explicit full exit. To start tracking an existing supported position, provide its mint and a fresh position file.
+
+The launch quote uses the on-chain initial buy cap. `--max-spend-sol` checks the total simulated launch debit. The watcher uses the first client-observed executable quote as its baseline. Its final receipt reports signed base-token and wallet lamport deltas and the network fee. A trigger is a trading rule, and realized proceeds depend on the fill.
+
+If the CLI reports `pending` or `watch-limit`, use `watch` with the same position file. Reconciliation uses the saved signature and can resend only the original signed bytes. A conclusively failed or expired sale leaves the position available to resume. `create` requires a fresh position file to prevent it from submitting a different launch than the operator requested. If the curve has closed and its pool is absent, the watcher waits for migration. After a canonical PumpSwap pool appears, it routes the next sell there. Keep any external trades in the same wallet outside the managed position window. [Protocol reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 - [ ] **1.5a Sniper Bait & Block-0 Settlement Verification**:
   - Verify that the dev buy landed in Block 0 at genesis curve price.
   - Observe incoming automated sniper buys (Bloom, Padre, Trojan) pushing market cap to $15K–$25K.

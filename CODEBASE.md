@@ -234,9 +234,19 @@ Every finding in the ledger (H01–H05, M01–M10) has been resolved in code, ve
 
 ## 5. Hardening & Edge-Case Audit Ledger — COINER-SCOUT-AI-1
 
+### Current CLI lifecycle
+
+`bin/coiner-cli.js` routes SOL-quoted Pump creation and live position management to `src/lib/pumpLifecycle.js`. It uses the official Pump SDK and PumpSwap SDK for Token-2022 creation, atomic initial buy, checked venue selection and slippage-protected sells. Standard SPL minting retains its existing path and gains signed RPC simulation.
+
+`src/lib/pumpPosition.js` owns the wallet lock, position journal, signed transaction simulation and finalized receipt reconciliation. On one host it permits one Coiner process per wallet and cluster. Each pending transaction is saved before submission. An uncertain send can replay the original bytes, while finalized metadata determines the token balance and SOL accounting. The journal’s identity includes cluster genesis and wallet address.
+
+The lifecycle review found three recovery defects in the first version. A conclusively failed or expired sale now records its outcome and keeps the position resumable. `create` requires an unused position path, and `watch` resumes a previously authorized transaction. A launch that includes an initial buy stays unresolved if the finalized metadata omits the acquired token balance. The regression fixture covers all three cases.
+
+`scripts/pump-lifecycle.test.mjs` checks identical-byte retry and journal recovery. With `COINER_SURFNET_RPC` set to the loopback Devnet fork, it also tests signed SPL simulation, atomic Pump launch, automatic exit, explicit curve sale and canonical PumpSwap sale after migration. [Operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) · [Protocol reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
+
 ### Current S01–S04 implementation
 
-S01–S04 passed the local hardening regressions, the compiled Pages runtime fixture, and production publishing and retrieval. Funded Devnet execution remains open.
+S01–S04 passed the local hardening regressions, the compiled Pages runtime fixture, and production publishing and retrieval. A funded local Devnet fork accepted the signed SPL transaction in simulation. Public Devnet execution remains open.
 
 | Requirement | Implementation and verification |
 |---|---|
