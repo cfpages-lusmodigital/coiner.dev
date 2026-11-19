@@ -153,7 +153,8 @@ To consistently win in the Solana trenches, you must stop viewing the market sol
   - Review images and local metadata previews in the new `staged-coins/run-*/` directory.
 - [ ] **1.5 Launch Coin #1 (The Pilot)**:
   - Preview transaction assembly with `node bin/coiner-cli.js scout --limit 1 --auto-launch --dry-run`. Dry runs skip IPFS pinning and broadcasting.
-  - For live SPL auto-launch without an explicit `--metadata-uri`, provision the same random base64url token as `COINER_SCOUT_UPLOAD_TOKEN` in Cloudflare Pages Secrets and in the operator's secret store. Inject it into the CLI process. Pinata credentials belong only in Pages Secrets.
+  - For live SPL auto-launch without an explicit `--metadata-uri`, map AgentSecrets key `COINER_LUSMODIGITAL_SCOUT_UPLOAD_TOKEN` into the CLI process as `COINER_SCOUT_UPLOAD_TOKEN`. The matching secret and the restricted Pinata JWT are configured in production Pages. Keep the operator token out of shell history and the Pinata JWT out of the CLI environment. Store future Coiner pinning replacements as encrypted server bindings. Vite variables are public build inputs.
+  - Production readiness checks include HTTP 401 for anonymous uploads, a small authorized image and metadata pin, then public gateway retrieval of both CIDs. Use the five local scout regression suites before changes to signing or publishing.
   - To separate staging and launch, upload the selected image and metadata first, then provide the published JSON with `--metadata-uri <url>`. Use `watch` separately for an existing supported Pump.fun mint.
   - Total outlay: **~0.10 SOL**. Remaining cash: **~0.90 SOL**.
 - [ ] **1.5a Sniper Bait & Block-0 Settlement Verification**:

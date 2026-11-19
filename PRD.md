@@ -529,7 +529,12 @@ The autonomous pipeline executes across 5 distinct phases:
 - ✅ Implemented: Limit market and image response bodies and include DNS and both market request phases in the applicable deadlines.
 - ✅ Implemented: Reject nonpublic destinations and redirects. Keep the HTTPS hostname for certificate verification and connect to a validated address.
 - ✅ Implemented: Require a validated image and an authenticated pinning response before automatic live creation. Dry runs and explicitly supplied URIs bypass automatic pinning.
-- ⏳ Deployment verification: Configure the Pages secret and inject the matching operator token before testing the deployed publishing path.
+- ✅ Verified: Production Pages uses encrypted scout and Pinata bindings. Anonymous requests and wrong bearers receive 401.
+- ✅ Verified: The compiled Pages handler uses workerd-compatible manual redirects and rejects non-success statuses. Pinning diagnostics exclude credentials and request content.
+- ✅ Verified: An authenticated production fixture pinned both files. The public JSON points to the returned image CID, and the retrieved image matches the original bytes.
+- ✅ Verified: The CLI serialized a transaction with valid disposable payer and mint signatures. Funded Devnet execution remains open because the public faucet returned HTTP 410.
+- ✅ Verified: The standalone Worker serves no Coiner route. Its automatic Git builds are paused, and both Pages deployments succeeded on the subsequent commit.
+- ✅ Verified: Pinata revoked the legacy Coiner admin credential. Production uses the scoped server-side JWT. Legacy variables were removed from Pages and Worker build settings.
 
 ### 16.1 Threat Model & Isolation Boundaries
 1. **Third-Party Market Data Ingestion**:
