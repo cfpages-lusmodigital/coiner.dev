@@ -138,10 +138,11 @@ test('S04 gates scout publishing and pins the actual image before constructing J
   assert.equal((await browserUpload({ request: uploadRequest(null, { withImage: false }), env })).status, 200);
 });
 
-test('S04 actual CLI gates signing on verified pinning and dry runs skip the proxy', async (t) => {
+test('S04 CLI validates pinning before signing and emits verifiable transaction signatures', async (t) => {
   let mode;
   let pinCalls = 0;
   let signingAttempts = 0;
+  let verifiedWireTransactions = 0;
   const output = [];
   const explicitUri = 'https://example.invalid/published.json';
   t.after(installScoutTransport((url) => mode === 'invalid' && url.hostname === 'images.example.invalid'
@@ -154,17 +155,31 @@ test('S04 actual CLI gates signing on verified pinning and dry runs skip the pro
     blockhash: Keypair.generate().publicKey.toBase58(),
     lastValidBlockHeight: 123,
   }));
-  t.mock.method(Connection.prototype, 'sendRawTransaction', async () => assert.fail('unexpected broadcast'));
-  t.mock.method(Transaction.prototype, 'sign', function () {
+  t.mock.method(Connection.prototype, 'sendRawTransaction', async (bytes) => {
+    assert.equal(mode, 'signed', 'unexpected submission attempt');
+    const signed = Transaction.from(bytes);
+    assert.equal(signed.signatures.length, 2, 'payer and mint signatures');
+    assert.ok(signed.verifySignatures());
+    assert.ok(signed.instructions.some((instruction) => instruction.data.includes(Buffer.from(pinnedFileUri(metadataCid)))));
+    verifiedWireTransactions++;
+    throw new Error('fixture verified signed bytes without submitting them');
+  });
+  const sign = Transaction.prototype.sign;
+  t.mock.method(Transaction.prototype, 'sign', function (...signers) {
     signingAttempts++;
-    assert.ok(['explicit', 'published'].includes(mode), 'unexpected signing call');
-    const expectedUri = mode === 'published' ? pinnedFileUri(metadataCid) : explicitUri;
+    assert.ok(['explicit', 'published', 'signed'].includes(mode), 'unexpected signing call');
+    const expectedUri = mode === 'explicit' ? explicitUri : pinnedFileUri(metadataCid);
     assert.ok(this.instructions.some((instruction) => instruction.data.includes(Buffer.from(expectedUri))));
+    if (mode === 'signed') {
+      sign.apply(this, signers);
+      assert.ok(this.verifySignatures());
+      return;
+    }
     throw new Error('fixture stopped before signing or broadcasting');
   });
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     pinCalls++;
-    assert.ok(['refused', 'published'].includes(mode), 'unexpected outbound request');
+    assert.ok(['refused', 'published', 'signed'].includes(mode), 'unexpected outbound request');
     assert.equal(url, 'https://coiner.dev/api/metadata');
     assert.equal(options.headers.Authorization, `Bearer ${fixtureToken}`);
     assert.equal(options.redirect, 'error');
@@ -174,13 +189,18 @@ test('S04 actual CLI gates signing on verified pinning and dry runs skip the pro
   });
 
   const keyfile = path.join(scratch, 'fixture-payer.json');
-  fs.writeFileSync(keyfile, JSON.stringify(Array.from(Keypair.generate().secretKey)), { flag: 'wx', mode: 0o600 });
+  fs.writeFileSync(keyfile, '', { flag: 'wx' });
+  const fixtureKey = JSON.stringify(Array.from(Keypair.generate().secretKey));
+  const readFileSync = fs.readFileSync;
+  t.mock.method(fs, 'readFileSync', (file, ...options) =>
+    file === keyfile ? fixtureKey : readFileSync(file, ...options));
   const expected = {
     invalid: /Downloaded image failed validation/,
     dry: /example\.invalid\/scout-dry-run/,
     refused: /IPFS pinning request failed/,
     published: /fixture stopped before signing or broadcasting/,
     explicit: /fixture stopped before signing or broadcasting/,
+    signed: /fixture verified signed bytes without submitting them/,
   };
   const priorExitCode = process.exitCode;
   const priorToken = process.env.COINER_SCOUT_UPLOAD_TOKEN;
@@ -189,10 +209,11 @@ test('S04 actual CLI gates signing on verified pinning and dry runs skip the pro
       mode = current;
       pinCalls = 0;
       signingAttempts = 0;
+      verifiedWireTransactions = 0;
       output.length = 0;
       process.exitCode = 0;
       delete process.env.COINER_SCOUT_UPLOAD_TOKEN;
-      if (['invalid', 'refused', 'published'].includes(mode)) process.env.COINER_SCOUT_UPLOAD_TOKEN = fixtureToken;
+      if (['invalid', 'refused', 'published', 'signed'].includes(mode)) process.env.COINER_SCOUT_UPLOAD_TOKEN = fixtureToken;
       await run([
         'scout', '--limit', '1', '--auto-launch', '--no-ai-bridge', '--json', '--staging-dir', scratch,
         ...(mode === 'dry' ? ['--dry-run'] : ['--keypair', keyfile]),
@@ -200,8 +221,9 @@ test('S04 actual CLI gates signing on verified pinning and dry runs skip the pro
       ]);
       assert.match(output.join('\n'), pattern, mode);
       assert.equal(process.exitCode, mode === 'dry' ? 0 : 1, mode);
-      assert.equal(pinCalls, ['refused', 'published'].includes(mode) ? 1 : 0, mode);
-      assert.equal(signingAttempts, ['explicit', 'published'].includes(mode) ? 1 : 0, mode);
+      assert.equal(pinCalls, ['refused', 'published', 'signed'].includes(mode) ? 1 : 0, mode);
+      assert.equal(signingAttempts, ['explicit', 'published', 'signed'].includes(mode) ? 1 : 0, mode);
+      assert.equal(verifiedWireTransactions, mode === 'signed' ? 1 : 0, mode);
     }
   } finally {
     process.exitCode = priorExitCode;

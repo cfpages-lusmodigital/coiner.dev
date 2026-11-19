@@ -149,17 +149,35 @@ export function onRequestPost(context) {
 }
 
 async function pinFile(file, filename, authHeaders) {
-  const form = new FormData();
-  form.append('file', file, filename);
-  form.append('pinataOptions', JSON.stringify({ cidVersion: 0 }));
-  const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-    method: 'POST',
-    headers: authHeaders,
-    body: form,
-    redirect: 'error',
-    signal: AbortSignal.timeout(15000),
-  });
-  return pinnedFileUri((await readPinningJson(response))?.IpfsHash);
+  let phase = 'multipart';
+  let upstreamStatus = null;
+  try {
+    const form = new FormData();
+    form.append('file', file, filename);
+    form.append('pinataOptions', JSON.stringify({ cidVersion: 0 }));
+    phase = 'request';
+    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: authHeaders,
+      body: form,
+      redirect: 'error',
+      signal: AbortSignal.timeout(15000),
+    });
+    upstreamStatus = response.status;
+    phase = 'response';
+    const payload = await readPinningJson(response);
+    phase = 'cid';
+    return pinnedFileUri(payload?.IpfsHash);
+  } catch (error) {
+    console.warn('Coiner IPFS pin failed', {
+      asset: filename === 'metadata.json' ? 'metadata' : 'image',
+      phase,
+      upstreamStatus,
+      kind: ['TimeoutError', 'AbortError', 'SyntaxError', 'TypeError'].includes(error?.name)
+        ? error.name : 'Error',
+    });
+    throw error;
+  }
 }
 
 export async function handleUploadMetadata(context, { requireImage = false } = {}) {
