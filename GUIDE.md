@@ -19,7 +19,7 @@ Before a real launch, confirm that the project and its creator allocation can be
 
 ### First Mainnet trial
 
-The authorized funding transfer placed **0.02 SOL** in the isolated trial wallet. A live launch is a separate decision. The proposed first trial is one launch and automatic exit, with no additional funding or promotion. [Current approval and evidence](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_SCOUT_PRODUCTION_CLOSURE.md)
+The first authorized trial used **0.02 SOL** in the isolated wallet and completed one launch and automatic exit. The budgets below describe that trial. Obtain a new authorization before any additional funding or live launch. [Current approval and evidence](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_SCOUT_PRODUCTION_CLOSURE.md)
 
 | Item | SOL | Control |
 |---|---:|---|
@@ -56,7 +56,7 @@ Use one designated execution host and one dedicated approved wallet. The CLI aut
 
 ### CLI lifecycle verification and recovery
 
-The verified release performed launch and automatic curve exit on public Devnet and exercised PumpSwap migration and liquidation separately on the local fork. The funded Mainnet launch simulation passed. Consult the tracker for the latest live result. [Devnet launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Devnet exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
+The verified release performed launch and automatic curve exit on public Devnet and exercised PumpSwap migration and liquidation separately on the local fork. On 2026-11-19, release `3436014` finalized a Mainnet launch and automatic bonding-curve exit for Coiner Trial (COTEST). The wallet ended with zero tracked tokens. Independent finalized RPC reads matched the journal, and a fresh watch returned the same receipts. The all-in cost including funding was 0.008734680 SOL. Two other wallets bought between launch and exit. This is one live execution and cost sample. [Finalized launch](https://explorer.solana.com/tx/4SmXu9k2pZrXsMQGALFpadT2VRLTQJMLLRBoNfeo251Sk1qkvNvQsMuMpfiPf4o8cYpNW82bB4opF4dv9DHJf3tj) · [Finalized exit](https://explorer.solana.com/tx/iKMrL68c3mgCGyJA3pwrboMU9C7yQpkHMUKwCrKd2fG6obE92S2hJFtwhMVHorabbhr5TzZDHFpL9LtuzNxXnF3) [Devnet launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Devnet exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
 
 The commands below are a Devnet rehearsal. Inject the isolated test signer as `SOLANA_KEYPAIR_JSON` or pass `--keypair` explicitly. Set `$positionFile` to an unused absolute path under an existing private directory.
 
@@ -89,4 +89,4 @@ The Devnet receipt sums to `-28,501,399 + 18,625,868 = -9,875,531` lamports of t
 3. **Run a forward paper comparison and reassess.** Keep live observations and paper fills labeled separately. Preserve an untouched chronological evaluation window. Report sample size, mean, variation and downside under the fixed rules. Compare multiple market periods to identify concentration in one winning period. Use paired, time-blocked uncertainty estimates if the sample supports them. Treat sparse or inconclusive evidence as an open research question.
 4. **Validate with separately authorized live receipts.** One live trial qualifies execution. Consider repeat deployment only within an explicitly authorized risk envelope and when chronological net results support a positive average after conservative costs, with no breached risk limits or unresolved receipts. Stop opening positions on a breach, an execution discrepancy, or deterioration in rolling net performance. Reconcile and review before any new authorization. Scale decisions require further out-of-sample evidence.
 
-Current verdict is **execution verified on Devnet, Mainnet launch simulated, and positive Mainnet expectancy unproven**. The tracker carries the next decision and the finalized evidence.
+Current verdict is **execution verified on both Devnet and Mainnet, with positive Mainnet expectancy unproven**. The tracker carries the next decision and the finalized evidence.

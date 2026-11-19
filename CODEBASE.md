@@ -244,6 +244,10 @@ The lifecycle review found three recovery defects in the first version. A conclu
 
 `scripts/pump-lifecycle.test.mjs` checks identical-byte retry and journal recovery. With `COINER_SURFNET_RPC` set to the loopback Devnet fork, it also tests signed SPL simulation, atomic Pump launch, automatic exit, explicit curve sale and canonical PumpSwap sale after migration. [Operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) · [Protocol reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 
+### Mainnet lifecycle verification
+
+On 2026-11-19, release `3436014` finalized a Mainnet launch and automatic bonding-curve exit for Coiner Trial (COTEST). The wallet ended with zero tracked tokens. Independent finalized RPC reads matched the journal, and a fresh watch returned the same receipts. The all-in cost including funding was 0.008734680 SOL. Two other wallets bought between launch and exit. This is one live execution and cost sample. [Finalized launch](https://explorer.solana.com/tx/4SmXu9k2pZrXsMQGALFpadT2VRLTQJMLLRBoNfeo251Sk1qkvNvQsMuMpfiPf4o8cYpNW82bB4opF4dv9DHJf3tj) · [Finalized exit](https://explorer.solana.com/tx/iKMrL68c3mgCGyJA3pwrboMU9C7yQpkHMUKwCrKd2fG6obE92S2hJFtwhMVHorabbhr5TzZDHFpL9LtuzNxXnF3)
+
 ### Current S01–S04 implementation
 
 S01–S04 passed the local hardening regressions, the compiled Pages runtime fixture, and production publishing and retrieval. On 2026-11-19, release `3436014` passed funded signed SPL and Pump simulations on public Devnet. It finalized the Token-2022 launch, initial buy, and automatic bonding-curve liquidation. Independent receipt reads matched both token changes and the wallet and fee accounting. Reopening the closed journal returned the same receipts and zero tokens. The local fork separately exercised sale on PumpSwap. [Finalized launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Finalized automatic exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
