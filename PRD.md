@@ -96,7 +96,7 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 ### Phase 5: Jito MEV Bundler & Anti-Snipe Launcher — `⏳ Planned`
 - `⏳ Planned` **Jito Block-0 Bundle Assembly:** Package token deployment, Raydium pool creation, and creator's initial buy orders into a single atomic Jito Bundle (up to 5 transactions).
 - `⏳ Planned` **Validator Tip Configuration:** Configurable Jito tip (e.g. 0.01 to 0.05 SOL) to ensure block-0 priority landing.
-- `⏳ Planned` **Sniper Bot Defense:** Guarantees that external sniper bots cannot front-run or drain the initial liquidity before the creator's purchase executes.
+- `⏳ Planned` **Transaction ordering goal:** Evaluate mechanisms that may reduce exposure to competing transactions. Verify observed execution and account for venue and network behavior.
 
 ---
 
@@ -132,273 +132,60 @@ A comprehensive audit of the Solana token creation landscape was conducted in No
 |---|---|---|
 | **Token Creation Success Rate** | > 99.0% | Client-side confirmation callbacks & RPC telemetry |
 | **Public Platform Revenue** | 0.15 SOL flat bundled fee (+0.05 SOL if customized) | On-chain Treasury Wallet balance (`VITE_TREASURY_WALLET`) |
-| **Admin Creation Cost** | Raw on-chain gas only (~0.0168 SOL) | On-chain fee payer transaction receipts |
+| **Admin SPL creation cost** | Measure on-chain fees and account deposits per mint | Finalized fee payer transaction receipts |
 | **Time to Launch** | < 15 seconds from Form Submit to On-Chain Finality | Client stopwatch telemetry in `LaunchModal.jsx` |
 | **RugCheck Compatibility** | 100% "Good" / A-Grade score | RugCheck API & on-chain authority inspection |
 
 ---
 
-## 7. Strategic Launch Engine & Capital Optimization (The 1 SOL Compounding Ladder)
+## 7. Launch strategy and evidence
 
-### 7.1 The Tactical Dilemma: Pump.fun vs. Raydium CPMM vs. Meteora DLMM
-When operating with lean capital (e.g. **1.0 SOL** initial treasury bankroll), standard direct DEX deployments present severe existential risk:
+Coiner supports a Solana SPL creator and a separate SOL-paired Pump lifecycle. The owner strategy is to test whether transparent launches can produce positive average net SOL after costs. Capital targets and individual success stories are hypotheses. The [launch and profitability SOP](GUIDE.md) owns qualification and sizing decisions. The CLI implements transaction safeguards and user-configured exit rules.
 
-1. **Raydium V3 CPMM Direct Deployment**:
-   - Fixed pool creation fee: **0.20 SOL**.
-   - Token minting gas: **~0.0168 SOL**.
-   - Minimum viable liquidity pairing: **0.50 SOL**.
-   - Permanent LP burn (required for RugCheck green locked status): Locks **0.50 SOL** irreversibly.
-   - *Total cost per launch*: **~0.72 SOL**.
-   - *Runway with 1.0 SOL*: **Exactly 1 launch**. If the initial token does not immediately achieve organic virality within the first 15 minutes, 72% of capital is destroyed, leaving the creator unable to fund a second pool.
+1. Validate financing and execute a funded simulation using the actual candidate, wallet, metadata URI, current network and fee state. Set a buy cap, a simulated launch cap, and an exit reserve. Use an isolated wallet with only the approved allocation.
+2. Require the scope and budget for each live trial or policy to be authorized before broadcasting. A single controlled trial verifies live execution and produces one realized net result.
+3. Require chronological out-of-sample evidence of positive mean net SOL after execution and operating costs before increasing spend or enabling repeated deployments. Evaluate downside, drawdown, data quality and unresolved exposure. Include failed and unfilled attempts. Equate continuous monitoring with the ability to pause when the measured edge weakens.
 
-2. **Pump.fun Bonding Curve Protocol**:
-   - Upfront creation cost: **~0.02 SOL** (network gas only).
-   - Atomic Block-0 Dev Buy: **0.08 SOL** (acquiring ~0.282% of total genesis supply at curve initial pricing with 30 SOL virtual reserves).
-   - Permanent liquidity lock: **0.00 SOL** (bonding curve manages virtual liquidity; dev tokens remain liquid and sellable).
-   - Creator Volume Fee Sharing (Pump.fun V2): Earns **0.300% (30 bps)** of all buy/sell volume directly in SOL, streamed to the creator vault.
-   - *Total nominal cost per launch*: **~0.10 SOL**.
-   - *Runway with 1.0 SOL*: **Controlled iterative launches with liquid capital reserve**.
-
-### 7.2 The Two-Stage Capital Compounding Ladder
-To maximize expected developer value while strictly protecting against capital ruin, `coiner.dev` implements a **Two-Stage Compounding Ladder**:
-
-```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                   THE TWO-STAGE CAPITAL COMPOUNDING LADDER                       │
-└──────────────────────────────────────────────────────────────────────────────────┘
-                                          │
-       ┌──────────────────────────────────┴──────────────────────────────────┐
-       ▼                                                                     ▼
-┌──────────────────────────────────────────┐    ┌──────────────────────────────────────────┐
-│ STAGE 1: BOOTSTRAP CURVE (1.0 SOL BANK)  │    │ STAGE 2: SOVEREIGN POOL (>= 5.0 SOL BANK)│
-├──────────────────────────────────────────┤    ├──────────────────────────────────────────┤
-│ • Launch Target: Pump.fun Bonding Curve  │    │ • Launch Target: Raydium V3 CPMM Pool    │
-│ • Capital per Launch: 0.10 SOL nominal   │    │ • Capital per Launch: 0.72 – 2.0 SOL     │
-│ • Alloc: 0.02 deploy + 0.08 genesis buy  │    │ • Alloc: 0.20 pool fee + 0.5-2.0 SOL LP  │
-│ • Execution: Atomic Block-0 Jito Bundle  │    │ • Execution: Atomic LP Burn (Green Lock) │
-│ • Revenue: 0.3% creator fee stream       │    │ • Note: Burned LP destroys ordinary fees │
-│   + Tiered trailing dev take-profits     │    │   + Uncapped open market upside          │
-│ • Target: Compound 1.0 SOL ──► 5.0+ SOL  │    │ • Target: High-conviction cult brand     │
-└──────────────────────────────────────────┘    └──────────────────────────────────────────┘
-```
-
-### 7.3 Field-Tested Micro-Capital Multiplier Sizing Rules (1 SOL ──► 100 SOL)
-Field intelligence extracted from frontline small-capital operators (`fHDPR48GejQ`, `flZ3YSGXTEI`, `ynf5tXViPbQ`, `h_Sipiv6MxI`) codifies five strict operational invariants incorporated into the platform:
-1. **The 15% Max-Risk Invariant**: Never commit >15%–20% of current bankroll per attempt (at 1.00 SOL bankroll, launch outlay is strictly 0.10–0.15 SOL), leaving a liquid reserve to withstand consecutive failures.
-2. **The 10-Double Compounding Equation**: Turning 1.00 SOL into 100.00 SOL requires ~7 disciplined 2x compounding cycles ($1 \times 2^{6.64} = 100$), not a reckless 10,000% gamble.
-3. **Copy-Trending / Vamping**: Ingest viral narratives from active DexScreener/X spikes and deploy higher-signal, 100% security-verified contracts within 90 seconds.
-4. **Staggered Take-Profit Tranches**: Liquidate dev holdings in 3 disciplined tranches: 33% at 2x (retrieving 100% initial capital), 33% at 3x–4x (securing pure profit), and 34% moonbag.
-5. **Interactive Operator Dashboard**: Actionable milestone tracking codified with interactive checkboxes in `GUIDE.md` and `%OneDrive%\MD\OPERATIONS\GUIDE-1-SOL-TO-100-SOL-MULTIPLIER.md`.
+As checked 2026-11-19, Pump's SOL-paired bonding curve schedule lists 1.25% total per trade, including 0.30% creator and 0.95% protocol fees. The live SDK fee configuration's initial tier agreed. Canonical PumpSwap fees vary by market-cap tier. Use the SDK and live configuration for the quote, and receipts for actual SOL changes. Account deposits, fee claims and actual recoveries belong in wallet accounting. Commercial fees for Coiner's public SPL creator are tracked separately. [Pump fees](https://pump.fun/docs/fees) · [Solana fees](https://solana.com/docs/core/fees)
 
 ---
 
-## 8. Tooling Gap Analysis & Platform Expansion Specifications
+## 8. Tooling gap analysis and platform expansion
 
-To execute both stages seamlessly via both Web UI and headless CLI, `coiner.dev` addresses four core tooling gaps:
-
-### 8.1 Gap 1: Multi-Destination Launch Target Selector
-* **Current State**: `coiner.dev` only creates standalone SPL mints, requiring users to manually navigate to Pump.fun or Raydium to seed pools.
-* **Required Expansion**:
-  - Add `--target <spl|pump|raydium>` flag to `bin/coiner-cli.js create`.
-  - Add destination selector card to `TokenForm.jsx` (Basics / Review step) supporting:
-    1. `SPL Standard`: Pure SPL token creation in creator wallet.
-    2. `Pump.fun Curve`: Direct bonding curve initialization with optional atomic initial dev buy.
-    3. `Raydium CPMM`: Raydium V3 pool initialization with user-specified quote SOL amount.
-
-### 8.2 Gap 2: Pump.fun Program Instruction & Atomic Dev Buy
-* **Current State**: Genesis buy requires a separate transaction that sniper bots routinely front-run.
-* **Required Expansion**:
-  - Integrate Pump.fun program ID `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`.
-  - Package `create` and `buy` instructions in a single atomic transaction:
-    - Creator inputs `--initial-buy-sol <amount>` (e.g. `0.08`).
-    - Transaction derives `bondingCurve` and `associatedBondingCurve` PDAs.
-    - Executes mint creation and immediate buy in the exact same block.
-
-### 8.3 Gap 3: Raydium V3 CPMM Pool Deployment & Atomic LP Burn
-* **Current State**: Creators must visit `raydium.io/liquidity/create`, upload tokens, manually approve pool creation (0.2 SOL), and navigate to Sol Incinerator to burn LP.
-* **Required Expansion**:
-  - Implement `coiner-cli.js pool create` using `@raydium-io/raydium-sdk-v2` or native CPMM program instructions.
-  - Implement `coiner-cli.js lp burn` utility executing an atomic SPL token burn on the LP token account to guarantee 100% locked liquidity.
-
-### 8.4 Gap 4: Real-Time Dynamic Cost Estimation
-* **Current State**: `coiner-cli.js estimate` only calculates SPL rent and platform fee.
-* **Required Expansion**:
-  - Update `estimateRentCosts()` to accept `target` parameter:
-    - If `target === 'pump'`, estimate = `0.02 SOL` creation + `initialBuySol`.
-    - If `target === 'raydium'`, estimate = `0.0168 SOL` mint + `0.20 SOL` pool fee + `quoteSol`.
+- **Released CLI targets.** `create --target spl` creates a standalone SPL token. `create --target pump` creates a SOL-paired Token-2022 mint with its Pump curve and supports an optional atomic initial buy. This path supports a signature-verified simulation and `--auto-exit` when an initial buy is specified.
+- **Web and Raydium proposals.** Web launch target selection, direct Raydium CPMM creation and LP management are separate roadmap work. Read current pool fees and verify support before considering another venue.
+- **Cost estimation.** The Pump CLI uses the simulated wallet debit against `--max-spend-sol` and applies a separate initial buy cap. A funded simulation must precede any live trial. Prior nominal costs cannot substitute for current fees, account deposits or required exit reserves.
 
 ---
 
-## 9. Multi-Player Perception Engineering & "POV-Jacking" Specification
+## 9. Market integrity and evidence
 
-### 9.1 The Trench Battlefield: 4 Distinct Actor POVs
-Tokens on Solana do not achieve breakout velocity through pure luck or serendipitous discovery. In the modern trenches, market motion is governed by four adversarial market participants, each operating under rigid heuristics, automated filters, and psychological biases:
+Create original or authorized token assets and use consistent public name, ticker and project links. Disclose creator allocation and any paid promotion. Keep candidate discovery separate from authority to launch. Scout scores, paid boosts and anecdotal outcomes do not establish expected returns or independent demand.
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                   THE 4-ACTOR TRENCH PERCEPTION MATRIX                           │
-└──────────────────────────────────────────────────────────────────────────────────┘
-   [ Actor 1: The Automated Sniper ]   ──►  Algorithmic latency race, Jito Block-0/1
-   [ Actor 2: The Retail Degen ]       ──►  Photon/BullX Memescope filters, anti-rug
-   [ Actor 3: The Trench Scanner Bot ] ──►  On-chain slot-bundle forensics (@trench_scanner_bot)
-   [ Actor 4: The Post-Bonding Whale ] ──►  DexScreener "Dex Paid", KOTH, 15s dip-reversals
-```
-
-#### 1. The Automated Sniper / MEV Bot Operator (Bloom, Padre, Trojan, Maestro, Photon Quick Buy)
-* **Operational Lens**: Latency, Block-0/Block-1 positioning, and mathematical risk-reward. Snipers run automated bots hooked to Solana Yellowstone Geyser / WebSocket feeds monitoring new curve initialization events.
-* **Exact Triggers**: Detection of valid mint + curve creation transaction where mint and freeze authorities are revoked.
-* **Auto-Abort / Blacklist Filters**:
-  - *Dev Buy > 1.50–2.00 SOL*: Snipers immediately blacklist or abort because high dev holdings signal an imminent developer dump farm.
-  - *Unrevoked Authorities*: Any presence of freeze or mint authority triggers instant abort.
-  - *Delayed Dev Buy*: If the creator deploys and buys in separate blocks, snipers frontrun the dev buy, sandwiching the creator.
-* **Execution Behavior**: They blast buy transactions with aggressive Jito validator tips (0.005 to 0.50+ SOL) and high priority fees to land in Block 0 or Block 1, expecting a fast 2x–5x on the opening green wick.
-
-#### 2. The Layman Retail Degen / Trench Trader (Photon, BullX, Axiom Memescope)
-* **Operational Lens**: High FOMO tempered by acute trauma from past rug pulls. Degens rely on mechanical UI filter presets to sift through 1,000+ hourly launches on Photon and BullX.
-* **Concrete Filter Thresholds (Harvested from Frontline Field Intelligence)**:
-  - *Audit Checks*: `Revoke Freeze = YES`, `Revoke Mint = YES`.
-  - *Dev Holding*: Maximum 5%–10% (ideally < 3%). If dev holds 0% or sells immediately, they check threads for a legitimate CTO (Community Takeover).
-  - *Top 10 Holders*: Maximum 15%–25% (Axiom max 40%). If top 10 hold >30%, degens scream "Cabal scam!" and skip.
-  - *Holder Count*: Minimum 3 to 5 unique wallets.
-  - *Bonding Progress / Market Cap*: Minimum 12% pump progress ($8k–$9k market cap) to ensure the token has baseline traction.
-  - *Transaction Health*: Minimum 4 buys AND **crucially at least 2 sells**! (Degens explicitly filter for coins with organic sells because fake dev bundles feature only buys and zero sells).
-  - *Global Fees Paid*: Minimum 0.30–0.50 SOL total fees paid on curve (verifying real network fee burn against market cap).
-  - *Social Presence*: At least 1 valid social link (Twitter/X, Telegram, or clean website) embedded in metadata.
-
-#### 3. The On-Chain Trench Detective & Safety Bots (`@trench_scanner_bot`, BubbleMaps, RugCheck)
-* **Operational Lens**: Forensic on-chain clustering and slot-bundle detection.
-* **Exact Detection Mechanism**:
-  - Degens copy the contract address (CA) and paste it into `@trench_scanner_bot` on Telegram.
-  - The bot scans the blockchain slot-by-slot. If 10–15 wallets purchased supply in the *exact same Solana slot* accumulating >35% of total supply, the bot fires an immediate red siren:
-    `🚨 FAKE SLOT BUNDLE SCAM: 15 wallets bought 47.2% in slot 284910291`.
-  - Even if BubbleMaps shows unlinked wallets (due to CEX withdrawal obfuscation), slot-level timestamp analysis exposes the insider bundle. When degens see this red alert, buying drops to zero.
-
-#### 4. The Post-Bonding Whale & DexScreener Momentum Hunter
-* **Operational Lens**: Capital preservation and trend continuation. Whales ignore sub-$20k noise, scanning only "About to Graduate" ($50k+ King of the Hill) or "Graduated / Raydium Migration" ($100k+).
-* **Exact Triggers**:
-  - *"Dex Paid" Verification*: Green badge confirming the $299 DexScreener fast-track promotion fee has been deposited. Whales consider un-paid tokens to be low-effort abandonment risks.
-  - *Post-Migration Dip Buying*: Whales wait for early Pump.fun snipers to dump after Raydium migration, creating a 40%–60% pullback to round-number support ($100k, $125k), and enter aggressively on the first higher-low reversal candle on the 15s/30s chart.
+Exclude wash trades, manufactured volume, concealed coordinated buying and misleading affiliation or return claims. Collect data through authorized sources and record observable inflows, actual fills and costs. Use the [operator SOP](GUIDE.md#validate-before-repeating) to evaluate market evidence before repeat deployment. [Pump terms, section 21](https://pump.fun/docs/terms-and-conditions#21-prohibited-use)
 
 ---
 
-### 9.2 The "POV-Jacking" Technical Architecture
-"POV-Jacking" is the intentional alignment of `coiner.dev`'s contract output, metadata, and liquidity dispatch to satisfy every actor's algorithmic and psychological criteria:
+## 10. Automated exit engine
 
-#### Rule 1: Genesis Atomic Dev Buy (Block-0 Invariant)
-* **Target Actor**: Sniper Bots.
-* **Mechanism**: In `bin/coiner-cli.js create --target pump --initial-buy-sol 0.08`, token creation and the creator buy are packed into the identical atomic transaction (Block 0).
-* **Strategic Outcome**: The creator obtains the absolute lowest mathematical cost basis on the bonding curve. When external snipers blast their Jito bundles in Block 0/Block 1, they execute *after* our dev buy, instantly pumping the market cap from $5k to $15k–$25k. We harness the snipers' liquidity rather than becoming their victims.
+Live `coiner-cli watch` and `create --target pump --auto-exit` use `src/lib/pumpLifecycle.js` and `src/lib/pumpPosition.js`. The installed Pump and PumpSwap SDKs build fee-aware quotes and execution instructions. The watcher verifies the RPC genesis, mint program, curve and pool ownership, and SOL quote mint. It routes to the bonding curve until completion, waits if migration is pending, and uses the canonical PumpSwap pool when it appears.
 
-#### Rule 2: The Sniper-Bait Dev Allocation (<1.5% Supply)
-* **Target Actor**: Sniper Bots & Retail Degens.
-* **Mechanism**: Dev buy size is strictly capped at **0.08 – 0.15 SOL** (acquiring ~0.282% to 0.55% of genesis supply).
-* **Strategic Outcome**: Snipers scanning the contract evaluate the dev buy as an ultra-clean "fair community launch" rather than a dev dump farm. They do not trigger auto-abort filters, committing their maximum buy size.
+The watcher uses its first executable full-position quote as the baseline. Each later comparison adjusts for the remaining token quantity. The default sequence is:
 
-#### Rule 3: 100% Memescope Filter Pass Guarantee
-* **Target Actor**: Retail Degens (Photon, BullX, Axiom).
-* **Mechanism**:
-  - `Revoke Freeze`, `Revoke Mint`, and `Immutable Metadata` are enforced unconditionally.
-  - Metaplex metadata generator validates that Twitter/X, Telegram, and Website links are populated with live, active endpoints.
-  - Top 10 holder distribution is preserved below 15% (excluding the virtual bonding curve reserve).
-  - Token immediately displays clean metrics, passing all 7 standard Memescope filters and surfacing on thousands of active degen monitors.
+| Trigger | Default rule | Attempted action |
+|---|---|---|
+| TP1 | Exit quote reaches 2.0x the normalized baseline | Sell up to half of initial tokens. |
+| TP2 | Exit quote reaches 3.5x after a finalized TP1 | Sell up to a quarter of initial tokens. |
+| Stop or timeout | Exit quote at or below 0.70x, or 25 minutes elapsed | Sell the full remaining position. Timeout has no additional multiplier requirement. |
+| Explicit liquidation | Operator passes `--liquidate-now` on the existing position | Attempt the full remaining exit when an executable venue is available. |
 
-#### Rule 4: Clean Slot Architecture (Zero Trench-Scanner Red Flags)
-* **Target Actor**: `@trench_scanner_bot` and On-Chain Investigators.
-* **Mechanism**: Zero multi-wallet slot bundling. The creator does not coordinate 10–15 artificial wallets in Block 0.
-* **Strategic Outcome**: When traders run `/scan <CA>` in `@trench_scanner_bot`, the bot reports:
-  `✅ Bundle Analysis: 0.0% Bundled Supply | 1 Developer Wallet (<1.0%) | 100% Clean Genesis`.
-  This clean bill of health converts cautious trench investigators into aggressive buyers.
-
-#### Rule 5: Timed "Dex Paid" Fast-Track Badge Activation
-* **Target Actor**: Post-Bonding Whales & DexScreener Hunters.
-* **Mechanism**: As curve progress approaches 55%–65% ($50k–$60k King of the Hill), the creator deposits the $299 (~1.5 SOL) DexScreener fast-track payment utilizing accumulated take-profit gains.
-* **Strategic Outcome**: The green "Dex Paid" badge lights up across DexScreener, Photon, and BullX prior to Raydium graduation. When pump.fun snipers dump at graduation, high-capital dip buyers immediately ape the pullback, launching the secondary leg from $100k to $500k+.
+Take-profit triggers express quotes rather than guaranteed returns. A trade uses a positive minimum amount out and a signature-verified simulation. Network failures, missing liquidity or a stale quote can delay or prevent a fill. The position file records pending signed bytes and finalized transaction receipts. Recovery uses the original signature, wallet, network and file. Actual SOL and base-token deltas come from finalized transactions. [CLI guide](GUIDE.md#cli-lifecycle-verification-and-recovery) · [Lifecycle reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 
 ---
 
-## 10. Automated Take-Profit & Exiting Engine Specification (`coiner-cli watch` / `--auto-exit`)
+## 11. Public metadata and communications
 
-### 10.1 Mechanical & Program Invariants
-Manual selling across web wallet popups introduces 5–15 seconds of human latency, during which sniper frontrunners dump and price advantages vanish. The automated exit engine interacts directly with the on-chain Pump.fun bonding curve via low-latency RPC/WebSocket feeds.
-
-* **Target Program ID**: `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P` (Pump.fun Mainnet)
-* **Fee Recipient**: `CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM`
-* **Bonding Curve PDA**: `PublicKey.findProgramAddressSync([Buffer.from('bonding-curve'), mint.toBuffer()], PUMP_PROGRAM_ID)`
-* **Bonding Curve Associated Token Account (ATA)**: `getAssociatedTokenAddressSync(mint, bondingCurvePda, true)`
-* **Event Authority PDA**: `PublicKey.findProgramAddressSync([Buffer.from('__event_authority')], PUMP_PROGRAM_ID)`
-* **Global Account PDA**: `PublicKey.findProgramAddressSync([Buffer.from('global')], PUMP_PROGRAM_ID)`
-
-#### Bonding Curve Account Data Schema (49 bytes)
-```
-[0..8]   Discriminator: 0x17b7f83760d8ac60 (sha256("account:BondingCurve")[0..8])
-[8..16]  virtualTokenReserves: u64 LE
-[16..24] virtualSolReserves: u64 LE
-[24..32] realTokenReserves: u64 LE
-[32..40] realSolReserves: u64 LE
-[40..48] tokenTotalSupply: u64 LE
-[48]     complete: u8 / bool (1 = bonded, ready for Raydium migration)
-```
-
-#### Spot Price & Curve Progress Formulation
-$$\text{Spot Price (SOL/token)} = \frac{\text{virtualSolReserves}}{\text{virtualTokenReserves}}$$
-$$\text{Multiplier} = \frac{\text{Spot Price}(t)}{\text{Spot Price}(t_0)}$$
-
-### 10.2 Tranche Exit Triggers & Risk Guards
-The engine enforces four automated triggers evaluated on every block confirmation or account change:
-
-| Trigger | Condition | Action | Rationale |
-|---|---|---|---|
-| **TP1 (Capital Recovery)** | `multiplier >= 2.0x` (or `--tp1 <float>`) | Sell **50%** of user's initial tokens | Recovers 100% of initial SOL spend into early bids ($0.50 \times 2.0 = 1.00$). Zero principal risk remains. |
-| **TP2 (Profit Lock)** | `multiplier >= 3.5x` (or `--tp2 <float>`) | Sell **25%** of user's initial tokens | Locks in pure profit (+0.15 to +0.25 SOL). |
-| **TP3 (Moonbag / Migration)** | `complete === true` or curve >= 95% | Hold/sell remaining **25%** | Harvests the top of the curve prior to Raydium LP migration dump. |
-| **Stop-Loss (SL)** | `multiplier <= 0.70x` (or `--sl <float>`) | Sell **100%** of remaining tokens | Cuts loss early if curve fails to maintain momentum. |
-| **Timeout Stop-Loss** | `elapsed >= 25m` and `multiplier < 1.5x` | Sell **100%** of remaining tokens | Reclaims ~70% of initial capital to reallocate into the next viral trend. |
-
-### 10.3 Sell Instruction Byte Assembly
-* **Instruction Discriminator**: `33 e6 85 a4 01 7f 83 ad` (`sha256("global:sell")[0..8]`)
-* **Payload Serialization**:
-  ```
-  [0..8]   Discriminator (8 bytes)
-  [8..16]  amount: u64 LE (base token units to sell)
-  [16..24] min_sol_output: u64 LE (minimum acceptable lamports with slippage protection)
-  ```
-* **Required Account Metas (14 accounts - Modern Pump IDL)**:
-  1. `global` (read-only PDA)
-  2. `fee_recipient` (writable)
-  3. `mint` (read-only)
-  4. `bonding_curve` (writable PDA)
-  5. `associated_bonding_curve` (writable ATA)
-  6. `associated_user` (writable ATA)
-  7. `user` (writable, signer, fee payer)
-  8. `system_program` (`11111111111111111111111111111111`)
-  9. `creator_vault` (writable PDA `['creator-vault', creator]`)
-  10. `token_program` (`TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`)
-  11. `event_authority` (read-only PDA)
-  12. `program` (`6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`)
-  13. `fee_config` (read-only PDA `['fee_config', pump_program]` on fee program)
-  14. `fee_program` (`pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ`)
-
----
-
-## 11. Sovereign Social Media Strategy & Universal Master Portal Specification
-
-### 11.1 Source Narrative Linking (Zero-Burner X Policy)
-* **Problem**: Registering fresh Twitter/X burner accounts for every launch triggers immediate phone/SMS verification gates, IP rate limits, and shadowbans within 15 minutes when posting contract addresses.
-* **Trench Invariant**: Link token metadata directly to the **original viral X post / author profile** (e.g. `https://x.com/elonmusk/status/...`).
-* **Tactical Benefits**:
-  1. *Instant Proof of Narrative*: Degens clicking the Twitter icon immediately see the real, trending context, eliminating doubts about token authenticity.
-  2. *Filter Clearance*: Photon, BullX, and Axiom scrapers verify HTTP 200 on `x.com` links and award the "Social Verified" badge automatically.
-
-### 11.2 Universal Master Telegram Portal (Cumulative Community)
-* **Problem**: Spawning 10–20 disposable Telegram groups produces dead, unmoderated chat rooms that scream "abandoned rug" to incoming traders.
-* **Architecture**: Establish a single, persistent **Master Telegram Supergroup** with native **Topics/Forums** enabled:
-  - *URL*: One immutable portal link placed across all token launches (e.g. `https://t.me/coiner_portal`).
-  - *Structure*: General channel for alpha announcements + dedicated Topics for each active coin (`#PNUT`, `#DOGE`).
-  - *Compounding Effect*: Every token launch routes new degens into the same permanent community, building a cumulative following of raid-ready holders for future coins.
-
-### 11.3 Visual Asset & Ticker Governance
-* **Asset Ingestion**: Ingest the highest-resolution crop of the viral meme image directly from the trending post. Never distort, water-mark, or over-edit; recognizable memes maximize instant degen click-throughs.
-* **Ticker Protocol**: Select the most direct, 3–6 character single-noun identifier (e.g. `$PNUT` > `$PEANUT_SOL`).
+Check that the on-chain name and ticker match the published metadata. Validate the image and JSON retrieval and keep proof of rights for the artwork. Use public channels the project operates or has permission to use, with clear attribution for any source material that is referenced. Provide accurate creator and project information without implying a third-party endorsement. Record promotional costs separately from actual trading proceeds. [Launch checklist](GUIDE.md#launch-checklist)
 
 ---
 
@@ -411,6 +198,7 @@ The engine enforces four automated triggers evaluated on every block confirmatio
 | **GATE-SELL-IX** | Pump and PumpSwap sell instructions | `src/lib/pumpLifecycle.js` | SDK fee-aware quotes, positive slippage floor and reconciled finalized token and wallet deltas. | Curve finalized on public Devnet. PumpSwap verified on the local fork. |
 | **GATE-CLI-WATCH** | CLI Watcher & Auto-Exit | `bin/coiner-cli.js watch` | Serial trades, same-signature retries, resumed receipts and automatic timeout exit. | Automatic exit and saved-receipt recovery verified on public Devnet. Identical-byte retry verified in fixtures. |
 | **GATE-CREATE-EXIT** | Unified Launch & Exit Flag | `coiner-cli create --target pump --auto-exit` | Finalize Token-2022 launch and initial buy, watch the funded position, then finalize its exit. | Finalized launch, buy and automatic curve exit on public Devnet. |
+| **GATE-LAUNCH-ECONOMICS** | Owner strategy validation | [Operator SOP](GUIDE.md#validate-before-repeating) | Reconciled all-in net SOL across an out-of-sample cohort and defined loss limits before repeated live runs. | Strategy evidence pending. |
 | **GATE-SCOUT** | Trend Scanner & Asset Harvester | `bin/coiner-cli.js scout` | Ingests DexScreener & Pump.fun feeds, extracts images, tickers, and viral social links | `✅ In Progress` |
 | **GATE-AI-BRIDGE** | AI Bridge Cognitive Engine | `src/lib/ai-bridge.js` | Connects to `ai-bridge-codev` cascade; distills narrative, lore, virality, and ticker variations | `✅ In Progress` |
 | **GATE-WALLET-CHECK** | Non-Custodial Keypair Validator | `coiner-cli wallet` | Inspects keypair public key against `2di...maV`, checks live SOL balance, zero-leakage | `✅ In Progress` |
@@ -422,24 +210,9 @@ The engine enforces four automated triggers evaluated on every block confirmatio
 
 ## 13. Autonomous Intelligence, Trend Scanner (`coiner-cli scout`), and AI Bridge Integration
 
-### 13.1 Market Scanner Endpoints & Data Harvesting Architecture
-The autonomous trend scanner (`coiner-cli scout`) identifies explosive viral meme narratives on Solana before manual creators can react. It polls high-velocity decentralized market feeds:
+### 13.1 Market scanner and staging
 
-* **DexScreener Latest Token Profiles API**: `https://api.dexscreener.com/token-profiles/latest/v1`
-  - Fetches newly active token profiles submitted with logos, headers, and social links.
-  - Filters: `chainId === 'solana'`, profile completeness score.
-* **DexScreener Top Boosts API**: `https://api.dexscreener.com/token-boosts/top/v1`
-  - Fetches top community-promoted tokens experiencing real-time organic engagement.
-* **Pump.fun King of the Hill / Coins Feed**: `https://frontend-api-v3.pump.fun/coins?sort=market_cap&order=DESC&limit=10`
-  - Inspects top bonding curves nearing graduation to emulate high-converting themes.
-
-#### Data Ingestion & Image Emulation Meta
-* **Community Narrative Invariant**: In Solana degen culture, cloning and emulating trending memes is standard, accepted practice. Derivative coins (e.g. `$PNUT`, `$ACT`, `$GOAT`, `$MOODENG`, `$NEIRO`) frequently outperform originators when launched with faster execution and better liquidity.
-* **Asset Ingestion Pipeline**:
-  1. Extract high-resolution image URL (`icon`, `header`).
-  2. Ingest viral social links (`twitter`, `telegram`, `website`).
-  3. Validate image buffer integrity (ensure valid PNG/JPEG/WebP magic bytes; size <= 5MB).
-  4. Pass raw narrative text to the AI Bridge for cognitive refinement.
+`coiner-cli scout` reads DexScreener token profiles, paid boosts, and pair summaries for Solana. It ranks eligible entries using activity metrics and stages validated raster images and metadata previews. The ranking is an input to candidate selection. It does not measure organic demand, expected profitability or asset rights. Review rights and public claims before publishing a candidate. Use authorized endpoints and the [launch checklist](GUIDE.md#launch-checklist).
 
 ### 13.2 Sovereign AI Bridge (`ai-bridge-codev`) Cognitive Layer
 The CLI connects to the workstation/fleet AI execution layer (`ai-bridge-codev`) to generate the *thinking components* essential for viral coin creation:
@@ -477,7 +250,7 @@ The CLI connects to the workstation/fleet AI execution layer (`ai-bridge-codev`)
 ```
 
 #### Fail-Closed & Offline Fallback Invariant
-If the AI bridge daemon is offline, experiencing network timeout, or unreachable, the CLI does **not crash or abort**. It automatically fails over to deterministic narrative templates (combining trending keywords, viral tickers, and default degen lore) so that token creation proceeds seamlessly without interruption.
+If the AI bridge daemon is offline, experiencing network timeout, or unreachable, the CLI does **not crash or abort**. It automatically fails over to deterministic narrative templates (combining trending keywords, viral tickers, and default degen lore) to produce staging suggestions. Live publication and trading still require an authorized candidate and risk envelope.
 
 ---
 
@@ -519,7 +292,7 @@ The autonomous pipeline executes across 5 distinct phases:
 4. **Published Metadata and SPL Mint**: For live auto-launch without an explicit URI, send the validated image and token fields to the authenticated Pages proxy. The proxy pins the image and then constructs and pins Metaplex JSON. Create uses the returned metadata URI only after both CIDs validate. A validation or publishing failure stops before signing. An explicit `--metadata-uri` uses the operator's pre-published JSON. A dry run skips pinning and uses the explicit URI or a reserved simulation URI.
 5. **Tradable Pump Launch and Exit**: `--target pump` launches a SOL-quoted Token-2022 coin. Supply an initial buy and `--auto-exit` to manage that position from the same CLI invocation. The watcher sells on the active bonding curve or routes to its canonical PumpSwap pool after migration. Standalone SPL creation still rejects live `--auto-exit`.
 
-The [CLI operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) explains the position file, confirmation, restart and manual liquidation. [Pump and Solana lifecycle reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
+The [launch and profitability guide](GUIDE.md) owns live preflight, net SOL accounting and strategy validation. The [CLI recovery procedure](GUIDE.md#cli-lifecycle-verification-and-recovery) explains position files, confirmation, restart and manual liquidation. [Pump and Solana lifecycle reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 
 ---
 
