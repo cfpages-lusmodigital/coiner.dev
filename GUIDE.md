@@ -13,6 +13,33 @@ This is the operating SOP for Coiner's SOL-paired Pump lifecycle. Read the [PRD 
 
 Before a real launch, confirm that the project and its creator allocation can be described transparently. Use original or authorized artwork, a consistent name and ticker, and project-owned social links. Obtain operator approval for the candidate, wallet, scope and maximum SOL at risk. Treat paid promotion as a disclosed expense. Exclude wash trades, fabricated demand, and undisclosed coordinated buying from both operations and evidence. Follow authorized data sources and current venue terms. [Pump terms, section 21](https://pump.fun/docs/terms-and-conditions#21-prohibited-use)
 
+## Set the budget and qualify each launch
+
+### First Mainnet trial
+
+The authorized funding transfer placed **0.02 SOL** in the isolated trial wallet. A live launch is a separate decision. The proposed first trial is one launch and automatic exit, with no additional funding or promotion. [Current approval and evidence](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_SCOUT_PRODUCTION_CLOSURE.md)
+
+| Item | SOL | Control |
+|---|---:|---|
+| Wallet exposure for this trial | 0.02 | The existing funded balance is the maximum available to execution. |
+| Initial creator buy | 0.001 | On-chain maximum input for the atomic initial buy. |
+| Total launch ceiling | 0.012 | Signature-verified simulation check for the complete launch debit, including the buy. |
+| Exit and retry reserve at the launch ceiling | 0.008 | Remaining funding if the launch uses the entire simulated ceiling. Keep it in the wallet for settlement. |
+
+The existing funded simulation projected **0.009691399 SOL** for the launch and **0.010308601 SOL** remaining before any exit. Repeat with the final matching public name, ticker and metadata. The first trial verifies execution through a final receipt and measures actual cost. The trial budget supplies no evidence of audience demand.
+
+### Commercial launch decision
+
+Select a candidate before sizing the buy. The creator should be able to explain its purpose, owned or licensed assets, and any creator position and exit policy in public. In the audience review, track meaningful independent participation against a predeclared minimum and evaluation window. Keep paid impressions, affiliated wallets and automated activity separate from evidence of independent demand. A paid boost, a promise of buying, or the creator's own capital does not meet the independent-demand test. Record why each candidate passed, failed, or was skipped. [Pump's rules on market integrity](https://pump.fun/docs/terms-and-conditions#21-prohibited-use)
+
+A Pump launch makes a bonding curve available for trading. Its virtual SOL reserves price orders, while real SOL reserves start at zero. A creator buy supplies some real reserves at the cost of taking a position. Before launch, model both buy and sell quotes at the intended order sizes with current program state and fees. Stress zero independent buys, a delayed exit and a period without a viable sale. During the run, use actual observed reserves and recompute the executable exit quote. Quoted market cap and virtual reserves cannot be spent. [Pump curve mechanics](https://github.com/pump-fun/pump-public-docs/blob/main/docs/PUMP_PROGRAM_README.md#bonding-curve) · [Pump fees](https://pump.fun/docs/fees)
+
+Set the maximum creator buy from the campaign's separately authorized loss budget after reserving launch costs, the exit fee and retry reserve, and any disclosed operating or promotional costs. Confirm the actual amount with a fresh funded simulation and record the expected position and quote impact at that size. Use the real expected loss in a no-demand scenario. Proceed only if the independent-demand evidence and the stressed liquidity and loss limits pass. Keep the buy small enough for the acceptable creator exposure and executable exit. Increasing the creator buy is an increase in capital at risk. If the minimum viable size exceeds the budget or independent demand is unproven, skip or go back to research.
+
+### Run one launch at a time
+
+Use one designated execution host and one dedicated approved wallet. The CLI automates one launch and its exit after the preflight. The operator or future batch runner applies the sequence gate between CLI invocations. Require a new, eligible candidate with fresh metadata, quotes and simulation before every authorized launch. Reconcile the previous journal and verify no pending signatures and zero tracked tokens before admitting a new launch. A conclusively failed launch requires final accounting of any fee or balance change. Hold the queue while a position is open, an exit or transfer is ambiguous, or a cumulative loss or attempt limit is breached. Resume with the same journal and signer. Count skipped and failed runs, and review realized net SOL before approving a new budget.
+
 ## Launch checklist
 
 1. **Stage and review.** Run `pnpm cli scout --limit 3` to collect leads. Scout rank, paid boosts and AI suggestions are candidate inputs. Review asset rights, metadata JSON and its image, name, ticker, creator allocation and disclosure. For the first Mainnet trial, use the specific reviewed metadata URI. Production pinning is available through the authenticated Pages proxy with the scoped upload token and server-side Pinata credential.
