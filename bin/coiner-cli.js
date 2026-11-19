@@ -296,6 +296,7 @@ OPTIONS:
   --staging-dir <path>   Operator-owned parent directory for a new scout run
   --auto-launch          Create from the top candidate. Live Mainnet launch uses create with reviewed metadata.
   --evidence-only        Read-only scout snapshot. No staging, pinning or transaction.
+  --sample-pump-flow     Sample finalized SOL PumpSwap receipts with scout --evidence-only on Mainnet.
   --max-no-buyer-loss-sol <sol>  Maximum modeled loss for an immediate full curve exit after launch
   --min-exit-reserve-sol <sol>   Minimum wallet balance after simulated launch (pass both limits)
   --outside-cost-sol <sol>      Costs outside the launch and exit receipts, when both limits are set
@@ -380,6 +381,7 @@ const PARSE_OPTIONS = {
   'auto-launch': { type: 'boolean', default: false },
   'min-boosts': { type: 'string', default: '0' },
   'evidence-only': { type: 'boolean', default: false },
+  'sample-pump-flow': { type: 'boolean', default: false },
   'max-no-buyer-loss-sol': { type: 'string' },
   'min-exit-reserve-sol': { type: 'string' },
   'outside-cost-sol': { type: 'string' },
@@ -1096,6 +1098,13 @@ export async function run(args = process.argv.slice(2)) {
     return;
   }
 
+  if (values['sample-pump-flow'] && (!values['evidence-only'] || values.network !== 'mainnet-beta')) {
+    const msg = 'Use --sample-pump-flow with scout --evidence-only --network mainnet-beta.';
+    console.error(isJson ? JSON.stringify({ success: false, error: msg }) : msg);
+    process.exitCode = 1;
+    return;
+  }
+
   // Network validation
   const ALLOWED_NETWORKS = ['devnet', 'mainnet-beta', 'testnet'];
   if (!ALLOWED_NETWORKS.includes(values.network)) {
@@ -1534,7 +1543,12 @@ try {
       const useAiBridge = values['ai-bridge'] && !values['no-ai-bridge'];
 
       if (values['evidence-only']) {
-        console.log(JSON.stringify(await scoutMarketEvidence({ limit, minBoosts }), null, 2));
+        const snapshot = await scoutMarketEvidence({ limit, minBoosts });
+        if (values['sample-pump-flow']) {
+          const { sampleScoutPumpFlow } = await import('../src/lib/scoutPumpFlow.js');
+          snapshot.pumpSwapFlow = await sampleScoutPumpFlow(connection, snapshot.candidates);
+        }
+        console.log(JSON.stringify(snapshot, null, 2));
         return;
       }
       if (isMainnet && values['auto-launch'] && !values.simulate && !values['dry-run']) {
