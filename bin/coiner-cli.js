@@ -67,6 +67,7 @@ import { refineCoinNarrative } from '../src/lib/ai-bridge.js';
 import {
   createScoutStagingRun,
   scanTrendingTokens,
+  scoutMarketEvidence,
   stageScoutedProfile,
 } from '../src/lib/scout.js';
 import { SCOUT_UPLOAD_TOKEN_FORMAT } from '../src/lib/ipfsMetadata.js';
@@ -293,7 +294,11 @@ OPTIONS:
   --limit <number>       Max candidate coins to scout (default: 5)
   --min-boosts <number>  Minimum DexScreener community boost count filter (default: 0)
   --staging-dir <path>   Operator-owned parent directory for a new scout run
-  --auto-launch          Create from the top candidate. Live auto-pinning requires COINER_SCOUT_UPLOAD_TOKEN
+  --auto-launch          Create from the top candidate. Live Mainnet launch uses create with reviewed metadata.
+  --evidence-only        Read-only scout snapshot. No staging, pinning or transaction.
+  --max-no-buyer-loss-sol <sol>  Maximum modeled loss for an immediate full curve exit after launch
+  --min-exit-reserve-sol <sol>   Minimum wallet balance after simulated launch (pass both limits)
+  --outside-cost-sol <sol>      Costs outside the launch and exit receipts, when both limits are set
   --dry-run              Simulate full transaction assembly & MTU check without broadcasting
   --json                 Output structured JSON response on stdout/stderr
   --help, -h             Show this help message
@@ -374,6 +379,10 @@ const PARSE_OPTIONS = {
   'staging-dir': { type: 'string' },
   'auto-launch': { type: 'boolean', default: false },
   'min-boosts': { type: 'string', default: '0' },
+  'evidence-only': { type: 'boolean', default: false },
+  'max-no-buyer-loss-sol': { type: 'string' },
+  'min-exit-reserve-sol': { type: 'string' },
+  'outside-cost-sol': { type: 'string' },
   'import-clipboard': { type: 'boolean', default: false },
   force: { type: 'boolean', default: false },
 };
@@ -1077,6 +1086,16 @@ export async function run(args = process.argv.slice(2)) {
     return;
   }
 
+  const riskRequested = ['max-no-buyer-loss-sol', 'min-exit-reserve-sol', 'outside-cost-sol']
+    .some((key) => values[key] !== undefined);
+  if ((values['evidence-only'] && (command !== 'scout' || values['auto-launch'] || values.simulate || values['dry-run'])) ||
+      (riskRequested && (command !== 'create' || values.target.toLowerCase() !== 'pump'))) {
+    const msg = 'Use --evidence-only with scout alone. Launch risk limits require create --target pump.';
+    console.error(isJson ? JSON.stringify({ success: false, error: msg }) : msg);
+    process.exitCode = 1;
+    return;
+  }
+
   // Network validation
   const ALLOWED_NETWORKS = ['devnet', 'mainnet-beta', 'testnet'];
   if (!ALLOWED_NETWORKS.includes(values.network)) {
@@ -1514,6 +1533,14 @@ try {
       const minBoosts = Math.floor(parseStrictDecimal(values['min-boosts'] || '0', 'min-boosts', { min: 0, allowZero: true }));
       const useAiBridge = values['ai-bridge'] && !values['no-ai-bridge'];
 
+      if (values['evidence-only']) {
+        console.log(JSON.stringify(await scoutMarketEvidence({ limit, minBoosts }), null, 2));
+        return;
+      }
+      if (isMainnet && values['auto-launch'] && !values.simulate && !values['dry-run']) {
+        throw new Error('Use create with reviewed metadata for a Mainnet launch. Scout rank is discovery evidence only.');
+      }
+
       if (!isJson) {
         console.log(`\n🔎 Scanning Solana meme trends on DexScreener (limit: ${limit})...`);
       }
@@ -1687,6 +1714,17 @@ try {
         if (buyLamports >= maxSpend || ((values['auto-exit'] || values['liquidate-now']) && buyLamports === 0n)) {
           throw new Error('Set --max-spend-sol above the initial buy. Auto-exit requires an initial buy.');
         }
+        let risk;
+        if (riskRequested) {
+          if (values['max-no-buyer-loss-sol'] === undefined || values['min-exit-reserve-sol'] === undefined || buyLamports === 0n) {
+            throw new Error('Set both launch risk limits and a positive initial buy.');
+          }
+          risk = {
+            maxLoss: calculateRawAmount(values['max-no-buyer-loss-sol'], 9),
+            minReserve: calculateRawAmount(values['min-exit-reserve-sol'], 9),
+            outsideCosts: values['outside-cost-sol'] === undefined ? 0n : calculateRawAmount(values['outside-cost-sol'], 9),
+          };
+        }
         const uri = async () => scoutUpload
           ? validateMetadataUri(await publishScoutMetadata(scoutUpload.staged, {
             name, symbol, decimals: 6, supply: '1000000000', token: scoutUpload.token,
@@ -1694,7 +1732,7 @@ try {
           : validateMetadataUri(values['metadata-uri']);
         const { runPumpLifecycle } = await import('../src/lib/pumpLifecycle.js');
         printPumpResult(await runPumpLifecycle(connection, {
-          ...options, launch: { name, symbol, uri, buyLamports, maxSpend }, autoExit: values['auto-exit'],
+          ...options, launch: { name, symbol, uri, buyLamports, maxSpend, risk }, autoExit: values['auto-exit'],
         }));
         return;
       }

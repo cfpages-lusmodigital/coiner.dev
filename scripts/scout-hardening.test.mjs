@@ -235,3 +235,37 @@ test('S04 CLI validates pinning before signing and emits verifiable transaction 
     else process.env.COINER_SCOUT_UPLOAD_TOKEN = priorToken;
   }
 });
+
+test('Scout evidence reports missing market fields and never stages an asset or admits a ranked Mainnet launch', async (t) => {
+  const output = [];
+  const before = fs.readdirSync(scratch).sort();
+  let requests = 0;
+  t.after(installScoutTransport((url) => {
+    requests++;
+    assert.equal(url.hostname, 'api.dexscreener.com', 'evidence cannot fetch images');
+    return marketFixture(url);
+  }));
+  t.mock.method(console, 'log', (message) => output.push(String(message)));
+  t.mock.method(console, 'error', (message) => output.push(String(message)));
+  const prior = process.exitCode;
+  try {
+    process.exitCode = 0;
+    await run(['scout', '--evidence-only', '--limit', '1', '--json', '--staging-dir', scratch]);
+    const snapshot = JSON.parse(output.pop());
+    assert.equal(snapshot.kind, 'comparable-market-snapshot');
+    assert.equal(snapshot.independentWalletsVerified, false);
+    assert.ok(Number.isFinite(Date.parse(snapshot.observedAt)));
+    assert.equal(snapshot.candidates.length, 1);
+    assert.equal(snapshot.candidates[0].market.m5.buys, null);
+    assert.ok(requests > 0);
+    assert.deepEqual(fs.readdirSync(scratch).sort(), before);
+    const evidenceRequests = requests;
+
+    await run(['scout', '--auto-launch', '--network', 'mainnet-beta', '--json']);
+    assert.equal(process.exitCode, 1);
+    assert.match(JSON.parse(output.pop()).error, /reviewed metadata/);
+    assert.equal(requests, evidenceRequests);
+  } finally {
+    process.exitCode = prior;
+  }
+});

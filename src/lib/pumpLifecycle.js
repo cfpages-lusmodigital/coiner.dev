@@ -81,11 +81,14 @@ export async function pumpVenue(connection, mint, user) {
   };
 }
 
-async function launchInstructions(connection, { payer, mintSigner, name, symbol, uri, buyLamports }) {
+async function prepareLaunch(connection, { payer, mintSigner, name, symbol, uri, buyLamports, priority, maxSpend, risk }) {
   const user = payer.publicKey;
   const mint = mintSigner.publicKey;
   const create = { mint, user, creator: user, name, symbol, uri, mayhemMode: false };
-  if (buyLamports === 0n) return [await PUMP_SDK.createV2Instruction(create)];
+  const options = { priority, mintSigner, maxSpend };
+  if (buyLamports === 0n) {
+    return preparePumpTransaction(connection, payer, [await PUMP_SDK.createV2Instruction(create)], options);
+  }
   const online = new OnlinePumpSdk(connection);
   const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
   const budget = asBN(buyLamports);
@@ -94,11 +97,50 @@ async function launchInstructions(connection, { payer, mintSigner, name, symbol,
   });
   if (amount.isZero()) throw new Error('The initial buy budget is too small.');
   const baseAta = getAssociatedTokenAddressSync(mint, user, false, TOKEN_2022_PROGRAM_ID);
-  return [
+  const instructions = [
     await PUMP_SDK.createV2Instruction(create),
     createAssociatedTokenAccountIdempotentInstruction(user, baseAta, user, mint, TOKEN_2022_PROGRAM_ID),
     await PUMP_SDK.getBuyV3InstructionRaw({ user, mint, amount, quoteAmount: budget }),
   ];
+  if (risk) {
+    options.launchRisk = {
+      addresses: [bondingCurvePda(mint).toBase58(), baseAta.toBase58()],
+      check({ accounts: [wallet, curveAccount, tokenAccount], before, exitFee, slot }) {
+        function decode(account) {
+          if (!account || !Array.isArray(account.data) || account.data[1] !== 'base64') {
+            throw new Error('Required simulated account is missing.');
+          }
+          return { ...account, owner: new PublicKey(account.owner), data: Buffer.from(account.data[0], 'base64') };
+        }
+        const curveInfo = decode(curveAccount);
+        const curve = PUMP_SDK.decodeBondingCurve(curveInfo);
+        const balance = unpackAccount(baseAta, decode(tokenAccount), TOKEN_2022_PROGRAM_ID);
+        if (!curveInfo.owner.equals(PUMP_PROGRAM_ID) || !curve.creator.equals(user) || curve.complete ||
+            ![PublicKey.default, NATIVE_MINT].some((quote) => curve.quoteMint.equals(quote)) ||
+            !balance.owner.equals(user) || !balance.mint.equals(mint) || balance.amount !== BigInt(amount.toString())) {
+          throw new Error('Post-buy simulation does not match the planned SOL curve and token position.');
+        }
+        const reserve = BigInt(wallet.lamports);
+        const exitQuote = BigInt(getSellSolAmountFromTokenAmount({
+          global, feeConfig, mintSupply: global.tokenTotalSupply, bondingCurve: curve, amount,
+        }).toString());
+        const debit = before - reserve;
+        const loss = debit + risk.outsideCosts + exitFee - exitQuote;
+        if (reserve < risk.minReserve || reserve < exitFee) {
+          throw new Error('Simulated launch leaves less than the required exit reserve.');
+        }
+        if (exitQuote <= exitFee || loss > risk.maxLoss) {
+          throw new Error('Modeled no-buyer loss exceeds the limit or the exit quote cannot cover its network fee.');
+        }
+        return {
+          slot, launchDebitLamports: debit.toString(), reserveLamports: reserve.toString(),
+          exitQuoteLamports: exitQuote.toString(), estimatedExitFeeLamports: exitFee.toString(),
+          modeledLossLamports: loss.toString(), outsideCostsLamports: risk.outsideCosts.toString(),
+        };
+      },
+    };
+  }
+  return preparePumpTransaction(connection, payer, instructions, options);
 }
 
 function receiptSummary(state, stateName) {
@@ -108,6 +150,7 @@ function receiptSummary(state, stateName) {
     mint: state.mint,
     pendingSignature: state.pending?.signature,
     lastFailure: state.lastFailure,
+    launchRisk: state.launchRisk,
     remainingBaseTokens: state.remaining,
     receipts: state.receipts,
   };
@@ -162,25 +205,25 @@ export async function runPumpLifecycle(connection, {
   if (simulate) {
     if (!launch) throw new Error('A Pump launch is required for this simulation.');
     const mintSigner = Keypair.generate();
-    const instructions = await launchInstructions(connection, { ...launch, payer, mintSigner, uri: await launch.uri() });
-    const prepared = await preparePumpTransaction(connection, payer, instructions, {
-      priority, mintSigner, maxSpend: launch.maxSpend,
-    });
-    return { ...receiptSummary({ mint: mintSigner.publicKey.toBase58(), receipts: [] }, 'simulated'), simulatedSignature: prepared.signature };
+    const prepared = await prepareLaunch(connection, { ...launch, payer, mintSigner, priority, uri: await launch.uri() });
+    return {
+      ...receiptSummary({ mint: mintSigner.publicKey.toBase58(), receipts: [], launchRisk: prepared.launchRisk }, 'simulated'),
+      simulatedSignature: prepared.signature,
+    };
   }
   return withWalletLock(genesis, owner, async () => {
     let initial;
     if (launch) {
       initial = async () => {
         const mintSigner = Keypair.generate();
-        const instructions = await launchInstructions(connection, { ...launch, payer, mintSigner, uri: await launch.uri() });
-        const prepared = await preparePumpTransaction(connection, payer, instructions, {
-          priority, mintSigner, maxSpend: launch.maxSpend,
+        const { launchRisk, ...prepared } = await prepareLaunch(connection, {
+          ...launch, payer, mintSigner, priority, uri: await launch.uri(),
         });
         const baseAta = getAssociatedTokenAddressSync(mintSigner.publicKey, payer.publicKey, false, TOKEN_2022_PROGRAM_ID);
         return {
           mint: mintSigner.publicKey.toBase58(),
           initial: '0', remaining: '0', autoExit, settings, receipts: [],
+          ...(launchRisk && { launchRisk }),
           pending: {
             ...prepared, action: 'launch', venue: 'curve', baseAta: baseAta.toBase58(),
             requiresPosition: launch.buyLamports > 0n,

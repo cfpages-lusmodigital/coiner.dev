@@ -244,6 +244,12 @@ The lifecycle review found three recovery defects in the first version. A conclu
 
 `scripts/pump-lifecycle.test.mjs` checks identical-byte retry and journal recovery. With `COINER_SURFNET_RPC` set to the loopback Devnet fork, it also tests signed SPL simulation, atomic Pump launch, automatic exit, explicit curve sale and canonical PumpSwap sale after migration. [Operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) · [Protocol reference](https://md.codev.id/#/KNOWLEDGE/KNOWLEDGE-COINER-PUMP-SOLANA-LIFECYCLE.md)
 
+### Scout market evidence and Pump launch risk checks
+
+`scout --evidence-only` uses `scoutMarketEvidence({ limit, minBoosts })` in `src/lib/scout.js` to read and report comparable pair activity and liquidity before any asset staging. `bin/coiner-cli.js` rejects rank-only live Scout launches on Mainnet. The owner chooses and reviews metadata through `create`.
+
+`prepareLaunch` in `src/lib/pumpLifecycle.js` builds the same curve instructions for simulation and submission. When both risk limits are supplied, `preparePumpTransaction` in `src/lib/pumpPosition.js` requests the payer, curve and token accounts from the exact signed simulation. It checks against the configured debit, decodes the authorized position, estimates a one-signature exit fee at the configured compute budget and evaluates the fee-aware modeled loss and remaining fee reserve. A failed check stops before position creation or transaction send. The evidence is returned as `launchRisk` and persisted with the position. Existing journals without it remain readable. The funded loopback fixture covers rejection and approved liquidation with the same limits.
+
 ### Mainnet lifecycle verification
 
 On 2026-11-19, release `3436014` finalized a Mainnet launch and automatic bonding-curve exit for Coiner Trial (COTEST). The wallet ended with zero tracked tokens. Independent finalized RPC reads matched the journal, and a fresh watch returned the same receipts. The all-in cost including funding was 0.008734680 SOL. Two other wallets bought between launch and exit. This is one live execution and cost sample. [Finalized launch](https://explorer.solana.com/tx/4SmXu9k2pZrXsMQGALFpadT2VRLTQJMLLRBoNfeo251Sk1qkvNvQsMuMpfiPf4o8cYpNW82bB4opF4dv9DHJf3tj) · [Finalized exit](https://explorer.solana.com/tx/iKMrL68c3mgCGyJA3pwrboMU9C7yQpkHMUKwCrKd2fG6obE92S2hJFtwhMVHorabbhr5TzZDHFpL9LtuzNxXnF3)

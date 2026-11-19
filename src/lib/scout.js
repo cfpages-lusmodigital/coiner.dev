@@ -306,6 +306,8 @@ export async function scanTrendingTokens(options = {}) {
         telegramUrl: telegram,
         websiteUrl: website,
         boosts: addressBoostMap.get(addr) || 0,
+        ...(options.evidenceOnly && { market: comparableMarketSnapshot(pair, boostsRes.status),
+          listedBoosts: addressBoostMap.get(addr) ?? null }),
       });
     }
   }
@@ -323,6 +325,35 @@ export async function scanTrendingTokens(options = {}) {
     .slice(0, limit);
 
   return results;
+}
+
+function comparableMarketSnapshot(pair, boostStatus) {
+  const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  const counts = (window) => ({
+    buys: Number.isSafeInteger(pair.txns?.[window]?.buys) ? observed(pair.txns[window].buys) : null,
+    sells: Number.isSafeInteger(pair.txns?.[window]?.sells) ? observed(pair.txns[window].sells) : null,
+    volumeUsd: observed(pair.volume?.[window]),
+  });
+  return {
+    pairAddress: typeof pair.pairAddress === 'string' ? pair.pairAddress : null,
+    dexId: typeof pair.dexId === 'string' ? pair.dexId : null,
+    quoteAddress: typeof pair.quoteToken?.address === 'string' ? pair.quoteToken.address : null,
+    pairCreatedAt: observed(pair.pairCreatedAt),
+    liquidityUsd: observed(pair.liquidity?.usd),
+    boostFeedAvailable: boostStatus === 'fulfilled',
+    m5: counts('m5'), h1: counts('h1'), h24: counts('h24'),
+  };
+}
+
+export async function scoutMarketEvidence({ limit, minBoosts }) {
+  const rows = await scanTrendingTokens({ limit, minBoosts, evidenceOnly: true });
+  return {
+    success: true, kind: 'comparable-market-snapshot', observedAt: new Date().toISOString(),
+    source: 'DexScreener', independentWalletsVerified: false,
+    candidates: rows.map(({ address, name, symbol, listedBoosts, market }) => ({
+      address, name, symbol, paidBoosts: listedBoosts, market,
+    })),
+  };
 }
 
 function verifyStagingDirectory(directory) {

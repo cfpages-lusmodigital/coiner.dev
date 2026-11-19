@@ -216,6 +216,12 @@ Check that the on-chain name and ticker match the published metadata. Validate t
 
 `coiner-cli scout` reads DexScreener token profiles, paid boosts, and pair summaries for Solana. It ranks eligible entries using activity metrics and stages validated raster images and metadata previews. The ranking is an input to candidate selection. It does not measure organic demand, expected profitability or asset rights. Review rights and public claims before publishing a candidate. Use authorized endpoints and the [launch checklist](GUIDE.md#launch-checklist).
 
+#### Strategy-launch qualification
+
+- `scout --evidence-only` reports timestamped public comparable-pair activity, liquidity and paid boosts separately. It returns before staging, pinning or trading. Missing data is explicit. The snapshot measures comparable activity and never certifies audience demand, independent wallet ownership, or authorization to launch.
+- Pump `create` accepts optional `--max-no-buyer-loss-sol` and `--min-exit-reserve-sol` together with optional `--outside-cost-sol` when both controls are set. Use these in simulation and live execution. Measure the post-buy curve, inventory and wallet from the exact signed launch simulation. Subtract the fee-aware full exit quote, add the estimated one-signature exit fee and declared outside costs, then enforce the modeled loss and reserve before writing a position or submitting. Recompute on every launch. A failed sell can lose more than the modeled fill.
+- Commercial candidate selection, rights review and one-position-at-a-time admission remain explicit operator gates until comparable evidence and repeat behavior are validated. A Scout snapshot alone cannot advance those gates.
+
 ### 13.2 Sovereign AI Bridge (`ai-bridge-codev`) Cognitive Layer
 The CLI connects to the workstation/fleet AI execution layer (`ai-bridge-codev`) to generate the *thinking components* essential for viral coin creation:
 

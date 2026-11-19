@@ -88,14 +88,12 @@ export async function openPumpPosition(filename, identity, initial) {
 
 export async function preparePumpTransaction(connection, payer, instructions, options) {
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+  const computeBudget = [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: options.priority }),
+  ];
   const message = new TransactionMessage({
-    payerKey: payer.publicKey,
-    recentBlockhash: blockhash,
-    instructions: [
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: options.priority }),
-      ...instructions,
-    ],
+    payerKey: payer.publicKey, recentBlockhash: blockhash, instructions: [...computeBudget, ...instructions],
   }).compileToV0Message();
   const tx = new VersionedTransaction(message);
   tx.sign(options.mintSigner ? [payer, options.mintSigner] : [payer]);
@@ -111,7 +109,7 @@ export async function preparePumpTransaction(connection, payer, instructions, op
   const response = await connection.simulateTransaction(tx, {
     commitment: 'confirmed',
     sigVerify: true,
-    accounts: { encoding: 'base64', addresses: [payerAddress] },
+    accounts: { encoding: 'base64', addresses: [payerAddress, ...(options.launchRisk?.addresses ?? [])] },
     ...(before && { minContextSlot: before.context.slot }),
   });
   if (response.value.err) {
@@ -127,7 +125,20 @@ export async function preparePumpTransaction(connection, payer, instructions, op
       throw new Error('Simulated wallet debit could not be verified within --max-spend-sol.');
     }
   }
+  let launchRisk;
+  if (options.launchRisk) {
+    const exitFeeMessage = new TransactionMessage({
+      payerKey: payer.publicKey, recentBlockhash: blockhash, instructions: computeBudget,
+    }).compileToV0Message();
+    const { value: exitFee } = await connection.getFeeForMessage(exitFeeMessage, 'confirmed');
+    if (!Number.isSafeInteger(exitFee) || exitFee <= 0) throw new Error('The exit network fee could not be estimated.');
+    launchRisk = options.launchRisk.check({
+      accounts: response.value.accounts, before: BigInt(before.value), exitFee: BigInt(exitFee),
+      slot: response.context.slot,
+    });
+  }
   return {
+    ...(launchRisk && { launchRisk }),
     signature: bs58.encode(tx.signatures[0]),
     bytes: bytes.toString('base64'),
     blockhash,

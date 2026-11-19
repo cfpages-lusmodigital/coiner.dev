@@ -153,7 +153,19 @@ test('funded SPL simulation and Pump launch and liquidation on a loopback Devnet
     assert.equal(spl.error, null);
     assert.ok(spl.unitsConsumed > 0);
     assert.equal(await connection.getAccountInfo(new PublicKey(spl.mint)), null);
-    const dryPump = await cli(['create', ...meta, ...pump, '--simulate']);
+    const risk = ['--max-no-buyer-loss-sol', '0.012', '--min-exit-reserve-sol', '0.008', '--outside-cost-sol', '0.000005'];
+    const dryPump = await cli(['create', ...meta, ...pump, ...risk, '--simulate']);
+    assert.ok(BigInt(dryPump.launchRisk.modeledLossLamports) <= 12000000n);
+    const tooLarge = await cli([
+      'create', ...meta, ...pump, '--max-no-buyer-loss-sol', '0.000001',
+      '--min-exit-reserve-sol', '0.008', '--position-file', files[2], '--auto-exit',
+    ], 1);
+    assert.match(tooLarge.error, /Modeled no-buyer loss/);
+    const lowReserve = await cli([
+      'create', ...meta, ...pump, '--max-no-buyer-loss-sol', '0.012',
+      '--min-exit-reserve-sol', '2', '--position-file', files[2], '--auto-exit',
+    ], 1);
+    assert.match(lowReserve.error, /required exit reserve/);
     assert.equal(await connection.getAccountInfo(new PublicKey(dryPump.mint)), null);
     const curve = await launch(files[0]);
     assert.equal(curve.status, 'created');
@@ -170,9 +182,11 @@ test('funded SPL simulation and Pump launch and liquidation on a loopback Devnet
     assert.deepEqual((await liquidate(files[0])).receipts, exit.receipts);
 
     const automatic = await cli([
-      'create', ...meta, ...pump, '--position-file', files[2], '--auto-exit', '--timeout', '0.01', '--poll-ms', '200',
+      'create', ...meta, ...pump, ...risk, '--position-file', files[2], '--auto-exit', '--timeout', '0.01', '--poll-ms', '200',
     ]);
     assert.equal(automatic.status, 'liquidated');
+    assert.ok(BigInt(automatic.launchRisk.reserveLamports) >= 8000000n);
+    assert.deepEqual((await liquidate(files[2])).launchRisk, automatic.launchRisk);
     assert.deepEqual(automatic.receipts.map(receipt => receipt.action), ['launch', 'liquidate']);
 
     const migrating = await launch(files[1]);
