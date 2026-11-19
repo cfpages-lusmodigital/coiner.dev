@@ -246,7 +246,7 @@ The lifecycle review found three recovery defects in the first version. A conclu
 
 ### Current S01–S04 implementation
 
-S01–S04 passed the local hardening regressions, the compiled Pages runtime fixture, and production publishing and retrieval. A funded local Devnet fork accepted the signed SPL transaction in simulation. Public Devnet execution remains open.
+S01–S04 passed the local hardening regressions, the compiled Pages runtime fixture, and production publishing and retrieval. On 2026-11-19, release `3436014` passed funded signed SPL and Pump simulations on public Devnet. It finalized the Token-2022 launch, initial buy, and automatic bonding-curve liquidation. Independent receipt reads matched both token changes and the wallet and fee accounting. Reopening the closed journal returned the same receipts and zero tokens. The local fork separately exercised sale on PumpSwap. [Finalized launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Finalized automatic exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
 
 | Requirement | Implementation and verification |
 |---|---|

@@ -408,9 +408,9 @@ The engine enforces four automated triggers evaluated on every block confirmatio
 |---|---|---|---|---|
 | **GATE-PRD** | PRD Specifications | Complete Architecture | Sections 1–16 fully codified with mathematical, cognitive, and protocol schemas | `✅ Completed` |
 | **GATE-PUMP-DATA** | Curve and pool state | `src/lib/pumpLifecycle.js` | Check the Pump owner, mint program and SOL quote. Resolve the canonical PumpSwap pool after migration. | Verified on local Devnet fork |
-| **GATE-SELL-IX** | Pump and PumpSwap sell instructions | `src/lib/pumpLifecycle.js` | SDK fee-aware quotes, positive slippage floor and reconciled finalized token and wallet deltas. | Verified on local Devnet fork |
-| **GATE-CLI-WATCH** | CLI Watcher & Auto-Exit | `bin/coiner-cli.js watch` | Serial trades, same-signature retries, resumed receipts and automatic timeout exit. | Fixtures and local Devnet fork passed |
-| **GATE-CREATE-EXIT** | Unified Launch & Exit Flag | `coiner-cli create --target pump --auto-exit` | Finalize Token-2022 launch and initial buy, watch the funded position, then finalize its exit. | Verified on local Devnet fork |
+| **GATE-SELL-IX** | Pump and PumpSwap sell instructions | `src/lib/pumpLifecycle.js` | SDK fee-aware quotes, positive slippage floor and reconciled finalized token and wallet deltas. | Curve finalized on public Devnet. PumpSwap verified on the local fork. |
+| **GATE-CLI-WATCH** | CLI Watcher & Auto-Exit | `bin/coiner-cli.js watch` | Serial trades, same-signature retries, resumed receipts and automatic timeout exit. | Automatic exit and saved-receipt recovery verified on public Devnet. Identical-byte retry verified in fixtures. |
+| **GATE-CREATE-EXIT** | Unified Launch & Exit Flag | `coiner-cli create --target pump --auto-exit` | Finalize Token-2022 launch and initial buy, watch the funded position, then finalize its exit. | Finalized launch, buy and automatic curve exit on public Devnet. |
 | **GATE-SCOUT** | Trend Scanner & Asset Harvester | `bin/coiner-cli.js scout` | Ingests DexScreener & Pump.fun feeds, extracts images, tickers, and viral social links | `✅ In Progress` |
 | **GATE-AI-BRIDGE** | AI Bridge Cognitive Engine | `src/lib/ai-bridge.js` | Connects to `ai-bridge-codev` cascade; distills narrative, lore, virality, and ticker variations | `✅ In Progress` |
 | **GATE-WALLET-CHECK** | Non-Custodial Keypair Validator | `coiner-cli wallet` | Inspects keypair public key against `2di...maV`, checks live SOL balance, zero-leakage | `✅ In Progress` |
@@ -534,7 +534,7 @@ The [CLI operating guide](GUIDE.md#cli-lifecycle-verification-and-recovery) expl
 - ✅ Verified: Production Pages uses encrypted scout and Pinata bindings. Anonymous requests and wrong bearers receive 401.
 - ✅ Verified: The compiled Pages handler uses workerd-compatible manual redirects and rejects non-success statuses. Pinning diagnostics exclude credentials and request content.
 - ✅ Verified: An authenticated production fixture pinned both files. The public JSON points to the returned image CID, and the retrieved image matches the original bytes.
-- ✅ Verified: A funded local Devnet fork executed the CLI’s signed SPL simulation and returned no instruction error. Public Devnet funding returned HTTP 410, and Mainnet execution remains untested.
+- ✅ Verified: Funded signed SPL and Pump simulations passed on public Devnet. The Token-2022 launch and full automatic bonding-curve sale finalized there, and the separate PumpSwap test passed on the local fork. Mainnet execution remains untested. [Finalized launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Finalized automatic exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
 - ✅ Verified: The standalone Worker serves no Coiner route. Its automatic Git builds are paused, and both Pages deployments succeeded on the subsequent commit.
 - ✅ Verified: Pinata revoked the legacy Coiner admin credential. Production uses the scoped server-side JWT. Legacy variables were removed from Pages and Worker build settings.
 

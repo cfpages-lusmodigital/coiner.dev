@@ -160,6 +160,8 @@ To consistently win in the Solana trenches, you must stop viewing the market sol
 
 ### CLI lifecycle verification and recovery
 
+On 2026-11-19, release `3436014` completed this lifecycle on public Devnet with the existing test metadata fixture. Signed SPL and Pump simulations passed, the initial buy and automatic curve sale finalized, and `watch` reopened the closed position with the same receipts. PumpSwap liquidation passed separately on the local fork. [Finalized launch](https://explorer.solana.com/tx/63PeyefbM27wpHQx4eXuWtNvjnWpTxFFtUJmS5ZgRxCHC1gp8LG12Bg5ayZXU4Hj3gY3VTZ4bAoNWYbqLTHS2BJJ?cluster=devnet) · [Finalized automatic exit](https://explorer.solana.com/tx/2LYxoQYDc2uy4cacuG5KAqzXHZbRcnbbGYZhQtaVeJ7kNsaWgm7Zhz7m49YWwAouG1jLrK8WPYWRjXhS2epN4ofF?cluster=devnet)
+
 Use the same position file and signer throughout a SOL-quoted Pump launch. The file keeps the mint, pending signature, signed transaction bytes and finalized receipts. Place it in a private directory on the machine that runs the watcher. The file contains no signer private key.
 
 ```powershell
