@@ -160,7 +160,8 @@ async function pinFile(file, filename, authHeaders) {
       method: 'POST',
       headers: authHeaders,
       body: form,
-      redirect: 'error',
+      // Workers supports manual redirects, which the response validator rejects.
+      redirect: 'manual',
       signal: AbortSignal.timeout(15000),
     });
     upstreamStatus = response.status;

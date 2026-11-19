@@ -102,11 +102,12 @@ test('S04 gates scout publishing and pins the actual image before constructing J
   let mode = 'ok';
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, 'https://api.pinata.cloud/pinning/pinFileToIPFS');
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     assert.equal(JSON.parse(options.body.get('pinataOptions')).cidVersion, 0);
     const file = options.body.get('file');
     if (file.type === 'image/png') {
       seen.push(Buffer.from(await file.arrayBuffer()));
+      if (mode === 'redirect') return new Response(null, { status: 302, headers: { location: 'https://example.invalid' } });
       return Response.json({ IpfsHash: mode === 'malformed' ? 'Qm-invalid' : imageCid });
     }
     seen.push(JSON.parse(await file.text()));
@@ -135,6 +136,9 @@ test('S04 gates scout publishing and pins the actual image before constructing J
   mode = 'malformed';
   assert.equal((await privateUpload({ request: uploadRequest(fixtureToken), env })).status, 502);
   assert.equal(seen.length, 3);
+  mode = 'redirect';
+  assert.equal((await privateUpload({ request: uploadRequest(fixtureToken), env })).status, 502);
+  assert.equal(seen.length, 4);
   assert.equal((await browserUpload({ request: uploadRequest(null, { withImage: false }), env })).status, 200);
 });
 
