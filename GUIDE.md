@@ -2,6 +2,8 @@
 
 This is the operating SOP for Coiner's SOL-paired Pump lifecycle. Read the [PRD requirements](PRD.md#7-launch-strategy-and-evidence), then check the [live progress tracker](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_SCOUT_PRODUCTION_CLOSURE.md) for funding, approvals, and outstanding transactions. The former 1-to-100 SOL ladder used selected anecdotes, unverified demand assumptions, and inconsistent exit arithmetic. Its historical versions remain available in Git history.
 
+The [downside model and decision rules](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_LAUNCH_DOWNSIDE_MODEL.md) define the cost inputs, stress cases, break-even math, Scout evidence, and per-run admission checks.
+
 ## Decide what the run can prove
 
 | Run | Evidence it can produce |
@@ -28,6 +30,8 @@ The authorized funding transfer placed **0.02 SOL** in the isolated trial wallet
 
 The existing funded simulation projected **0.009691399 SOL** for the launch and **0.010308601 SOL** remaining before any exit. Repeat with the final matching public name, ticker and metadata. The first trial verifies execution through a final receipt and measures actual cost. The trial budget supplies no evidence of audience demand.
 
+The proposed one-test budget also caps modeled no-buyer loss at 0.010 SOL, including costs attributable to the test. Refresh the estimate using the simulated post-buy curve and an exit fee estimate. Report exposure at zero recovery alongside the modeled successful exit.
+
 ### Commercial launch decision
 
 Select a candidate before sizing the buy. The creator should be able to explain its purpose, owned or licensed assets, and any creator position and exit policy in public. In the audience review, track meaningful independent participation against a predeclared minimum and evaluation window. Keep paid impressions, affiliated wallets and automated activity separate from evidence of independent demand. A paid boost, a promise of buying, or the creator's own capital does not meet the independent-demand test. Record why each candidate passed, failed, or was skipped. [Pump's rules on market integrity](https://pump.fun/docs/terms-and-conditions#21-prohibited-use)
@@ -35,6 +39,8 @@ Select a candidate before sizing the buy. The creator should be able to explain 
 A Pump launch makes a bonding curve available for trading. Its virtual SOL reserves price orders, while real SOL reserves start at zero. A creator buy supplies some real reserves at the cost of taking a position. Before launch, model both buy and sell quotes at the intended order sizes with current program state and fees. Stress zero independent buys, a delayed exit and a period without a viable sale. During the run, use actual observed reserves and recompute the executable exit quote. Quoted market cap and virtual reserves cannot be spent. [Pump curve mechanics](https://github.com/pump-fun/pump-public-docs/blob/main/docs/PUMP_PROGRAM_README.md#bonding-curve) · [Pump fees](https://pump.fun/docs/fees)
 
 Set the maximum creator buy from the campaign's separately authorized loss budget after reserving launch costs, the exit fee and retry reserve, and any disclosed operating or promotional costs. Confirm the actual amount with a fresh funded simulation and record the expected position and quote impact at that size. Use the real expected loss in a no-demand scenario. Proceed only if the independent-demand evidence and the stressed liquidity and loss limits pass. Keep the buy small enough for the acceptable creator exposure and executable exit. Increasing the creator buy is an increase in capital at risk. If the minimum viable size exceeds the budget or independent demand is unproven, skip or go back to research.
+
+Collect time-stamped comparable demand and executable-liquidity evidence with a versioned, read-only Scout qualification before letting Scout admit a commercial candidate. Paid reach and unknown affiliations are recorded separately. Use the downside model's evidence rules and retain skipped candidates and stale-input failures. The released Scout ranking supplies leads while this qualification is pending.
 
 ### Run one launch at a time
 

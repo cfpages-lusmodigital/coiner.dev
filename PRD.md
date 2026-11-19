@@ -146,6 +146,8 @@ Coiner supports a Solana SPL creator and a separate SOL-paired Pump lifecycle. T
 2. Require the scope and budget for each live trial or policy to be authorized before broadcasting. A single controlled trial verifies live execution and produces one realized net result.
 3. Require chronological out-of-sample evidence of positive mean net SOL after execution and operating costs before increasing spend or enabling repeated deployments. Evaluate downside, drawdown, data quality and unresolved exposure. Include failed and unfilled attempts. Equate continuous monitoring with the ability to pause when the measured edge weakens.
 
+Authorize repeat deployment only after the [no-buyer downside model and per-run decision rules](https://md.codev.id/#/OPERATIONS/PROJECTS/COINER_LAUNCH_DOWNSIDE_MODEL.md) pass in a verified workflow. Separate realized performance and unsigned quote estimates. Keep unresolved exposure on the ledger and hold new launches until recovery.
+
 As checked 2026-11-19, Pump's SOL-paired bonding curve schedule lists 1.25% total per trade, including 0.30% creator and 0.95% protocol fees. The live SDK fee configuration's initial tier agreed. Canonical PumpSwap fees vary by market-cap tier. Use the SDK and live configuration for the quote, and receipts for actual SOL changes. Account deposits, fee claims and actual recoveries belong in wallet accounting. Commercial fees for Coiner's public SPL creator are tracked separately. [Pump fees](https://pump.fun/docs/fees) · [Solana fees](https://solana.com/docs/core/fees)
 
 ---
