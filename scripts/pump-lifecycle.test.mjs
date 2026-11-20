@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, rmdir } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -111,6 +111,7 @@ test('funded SPL simulation and Pump launch and liquidation on a loopback Devnet
   assert.equal(await connection.getGenesisHash(), DEVNET);
   const payer = Keypair.generate();
   const graduateBuyer = Keypair.generate();
+  const timedPayer = Keypair.generate();
   const fund = async (signer, lamports) => {
     await connection.requestAirdrop(signer.publicKey, lamports);
     for (let i = 0; i < 20 && await connection.getBalance(signer.publicKey) < lamports; i++) await delay(300);
@@ -118,21 +119,22 @@ test('funded SPL simulation and Pump launch and liquidation on a loopback Devnet
   };
   await fund(payer, 2e9);
   await fund(graduateBuyer, 200e9);
+  await fund(timedPayer, 420000000);
   const directory = await mkdtemp(join(tmpdir(), 'coiner-pump-integration-'));
-  const files = ['curve.json', 'pool.json', 'auto.json'].map(name => join(directory, name));
+  const files = ['curve.json', 'pool.json', 'auto.json', 'deadline.json'].map(name => join(directory, name));
   const common = ['--network', 'devnet', '--rpc', localRpc, '--json', '--priority', 'normal'];
   const meta = [
     '--name', 'Coiner Test Fixture', '--symbol', 'CNTST',
     '--metadata-uri', 'https://gateway.pinata.cloud/ipfs/QmTuitgTHHDYZSBFksz7Tz4APsA3WqE8YsK3vWGfajTm8h',
   ];
   const pump = ['--target', 'pump', '--initial-buy-sol', '0.02', '--max-spend-sol', '0.15'];
-  async function cli(args, expectedExit = 0) {
+  async function cli(args, expectedExit = 0, signer = payer) {
     const logs = [];
     const log = console.log;
     const error = console.error;
     const previousExitCode = process.exitCode;
     process.exitCode = 0;
-    process.env.SOLANA_KEYPAIR_JSON = JSON.stringify(Array.from(payer.secretKey));
+    process.env.SOLANA_KEYPAIR_JSON = JSON.stringify(Array.from(signer.secretKey));
     try {
       console.log = data => logs.push(String(data));
       console.error = data => logs.push(String(data));
@@ -188,6 +190,43 @@ test('funded SPL simulation and Pump launch and liquidation on a loopback Devnet
     assert.ok(BigInt(automatic.launchRisk.reserveLamports) >= 8000000n);
     assert.deepEqual((await liquidate(files[2])).launchRisk, automatic.launchRisk);
     assert.deepEqual(automatic.receipts.map(receipt => receipt.action), ['launch', 'liquidate']);
+
+    const timed = await cli([
+      'create', ...meta, '--target', 'pump', '--initial-buy-sol', '0.40', '--max-spend-sol', '0.410',
+      '--max-no-buyer-loss-sol', '0.021', '--min-exit-reserve-sol', '0.010', '--outside-cost-sol', '0.000005',
+      '--position-file', files[3], '--timeout', '5', '--max-iterations', '1',
+    ], 0, timedPayer);
+    assert.equal(timed.status, 'created');
+    const { launchDebitLamports, reserveLamports, modeledLossLamports } = timed.launchRisk;
+    assert.ok(BigInt(reserveLamports) >= 10000000n);
+    assert.ok(100n * BigInt(modeledLossLamports) < 5n * BigInt(launchDebitLamports));
+    const [launchReceipt] = timed.receipts;
+    const launchTx = await connection.getTransaction(launchReceipt.signature, {
+      commitment: 'finalized', maxSupportedTransactionVersion: 0,
+    });
+    assert.ok(launchTx.blockTime > 0);
+    assert.equal(launchReceipt.blockTime, launchTx.blockTime);
+    const state = JSON.parse(await readFile(files[3], 'utf8'));
+    assert.equal(state.startedAt, launchTx.blockTime * 1000);
+    assert.equal(state.settings.timeoutMs, 300000);
+    const deadline = state.startedAt + state.settings.timeoutMs;
+    const originalNow = Date.now;
+    try {
+      Date.now = () => deadline - 1;
+      const waiting = await cli(['watch', '--position-file', files[3]], 2, timedPayer);
+      assert.equal(waiting.status, 'watch-limit');
+      assert.deepEqual(waiting.receipts, [launchReceipt]);
+      Date.now = () => deadline;
+      const closed = await cli(['watch', '--position-file', files[3]], 0, timedPayer);
+      assert.equal(closed.status, 'liquidated');
+      assert.equal(closed.remainingBaseTokens, '0');
+      assert.deepEqual(closed.receipts.map(receipt => receipt.action), ['launch', 'liquidate']);
+      assert.equal(closed.receipts[1].baseTokenDelta, '-' + timed.remainingBaseTokens);
+      const reopened = await cli(['watch', '--position-file', files[3], '--liquidate-now'], 0, timedPayer);
+      assert.deepEqual(reopened.receipts, closed.receipts);
+    } finally {
+      Date.now = originalNow;
+    }
 
     const migrating = await launch(files[1]);
     const mint = new PublicKey(migrating.mint);

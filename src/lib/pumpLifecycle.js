@@ -20,6 +20,7 @@ import {
 
 const asBN = value => new BN(value.toString());
 const min = (a, b) => a < b ? a : b;
+const validBlockTime = value => Number.isSafeInteger(value) && value > 0;
 
 export async function pumpVenue(connection, mint, user) {
   const curveAddress = bondingCurvePda(mint);
@@ -181,15 +182,23 @@ export async function settlePumpPosition(connection, journal) {
   if (mismatch) {
     throw new Error('Finalized token balance does not match the authorized action.');
   }
+  let blockTime = result.transaction.blockTime;
+  if (pending.action === 'launch' && !validBlockTime(blockTime)) {
+    blockTime = await connection.getBlockTime(result.transaction.slot).catch(() => null);
+  }
   const receipt = {
     action: pending.action, venue: pending.venue, signature: pending.signature,
     slot: result.transaction.slot, baseTokenDelta: deltas.baseDelta.toString(),
     walletLamportDelta: deltas.walletDelta.toString(), networkFeeLamports: deltas.fee.toString(),
+    ...(validBlockTime(blockTime) && { blockTime }),
   };
   await save({
     pending: null, receipts: [...state.receipts, receipt],
     ...(pending.action === 'launch'
-      ? { initial: deltas.baseDelta.toString(), remaining: deltas.baseDelta.toString() }
+      ? {
+        initial: deltas.baseDelta.toString(), remaining: deltas.baseDelta.toString(),
+        startedAt: validBlockTime(blockTime) ? blockTime * 1000 : state.startedAt ?? Date.now(),
+      }
       : { remaining: (remaining - sold).toString() }),
   });
   return 'confirmed';
@@ -255,7 +264,13 @@ export async function runPumpLifecycle(connection, {
     if (launch && !state.autoExit && !liquidateNow) return receiptSummary(state, 'created');
     const mint = new PublicKey(state.mint);
     const policy = state.settings;
-    if (!state.startedAt) await save({ startedAt: Date.now() });
+    if (state.remaining === '0') return receiptSummary(state, 'liquidated');
+    if (!state.startedAt) {
+      const launchReceipt = state.receipts.find(receipt => receipt.action === 'launch');
+      const blockTime = launchReceipt?.blockTime ??
+        (launchReceipt ? await connection.getBlockTime(launchReceipt.slot).catch(() => null) : null);
+      await save({ startedAt: validBlockTime(blockTime) ? blockTime * 1000 : Date.now() });
+    }
     for (let iteration = 0; iteration < policy.maxIterations; iteration++) {
       const remaining = BigInt(state.remaining);
       if (remaining === 0n) return receiptSummary(state, 'liquidated');

@@ -76,6 +76,8 @@ Use `--rpc http://127.0.0.1:18999` for the local Devnet fork. The create command
 
 The watcher compares the first executable exit quote to later size-normalized quotes. With the default settings, TP1 attempts to sell half the original position at 2.0x, TP2 attempts to sell a quarter at 3.5x after TP1, and a timeout or 0.70x stop attempts the full remaining exit. The timeout is independent of the price multiplier. A trigger or a quote gives no guarantee of a fill, cost recovery or future demand. Use simulated fees and actual finalized receipts, including rent and slippage. See the [watcher specification](PRD.md#10-automated-exit-engine).
 
+Set `--timeout 5` on creation for a five-minute observation window. For CLI launches, the window starts at the finalized launch block time when the RPC supplies it. The same journal keeps the deadline through restarts, and the watcher attempts the exit at its first eligible check after the cutoff. An imported mint without a launch receipt starts timing when first watched.
+
 ## Measure net SOL
 
 Use one ledger row per opportunity and a stable run ID. Record the rule version, eligibility, decision time, selected or skipped reason, candidate and metadata, signer, quote and fee assumptions, budget, signatures, amounts, proceeds, actual costs and disposition. Keep rejected, failed, expired, unfilled and unresolved entries. Reconcile these separately from confirmed closed trades.
